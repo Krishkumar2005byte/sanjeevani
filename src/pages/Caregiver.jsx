@@ -1,9 +1,17 @@
 /**
  * Caregiver.jsx - Live Real-Time Dashboard (Figma Design)
  * Owner: Dev 3 (Caregiver Dashboard)
- * 
+ *
+ * Phase 1 changes:
+ * - Fixed alert bar: amber bar now only shows for Medium/High urgency symptoms,
+ *   not every symptom reported — eliminates caregiver alert fatigue.
+ * - Removed hardcoded fake emergency contact and room number fallbacks;
+ *   replaced with neutral "Not set" / "Not assigned" placeholders.
+ * - Added booked appointment display (doctor, specialty, time, video link).
+ * - Added "Mark Resolved" inline confirm UI to clear the emergency flag.
+ *
  * Modeled after Figma Screen 3:
- * - Red top alert bar if emergency active: "🚨 ALERT: Ramesh needs help (just now) [ Respond now ]"
+ * - Red top alert bar if emergency active
  * - Patient profile card + AI Urgency card side-by-side
  * - Reported symptoms chips
  * - Current medicines list with "✓ Taken" or "Pending"
@@ -13,14 +21,26 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { subscribeToPatient, clearQuickAlert } from '../lib/patientService.js';
+import { subscribeToPatient, clearQuickAlert, clearEmergency } from '../lib/patientService.js';
 import languages from '../data/languages.json';
 import { getUiText } from '../lib/translations.js';
 import UrgencyBadge from '../components/UrgencyBadge.jsx';
 
+function isValidUrl(url) {
+  if (typeof url !== 'string' || !url.trim()) return false;
+  try {
+    const parsed = new URL(url.trim());
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 export default function Caregiver() {
   const [patient, setPatient] = useState(null);
   const [langCode, setLangCode] = useState('hi');
+  // Phase 1: inline confirmation state for the "Mark Resolved" emergency clear action
+  const [confirmClear, setConfirmClear] = useState(false);
 
   useEffect(() => {
     const unsub = subscribeToPatient((data) => {
@@ -58,6 +78,17 @@ export default function Caregiver() {
   const isEmergency = Boolean(patient.emergency);
   const ui = getUiText(langCode);
 
+  // Phase 1: only show the alert bar for genuine urgency — Medium or High —
+  // not for every routine symptom. This prevents caregiver alert fatigue.
+  const urgency = patient.urgency || 'Low';
+  const showUrgencyAlert = isEmergency || (symptoms.length > 0 && (urgency === 'Medium' || urgency === 'High'));
+
+  // Phase 1: handler for the inline clear-emergency confirmation
+  const handleClearEmergency = async () => {
+    await clearEmergency();
+    setConfirmClear(false);
+  };
+
   return (
     <div className="page-container figma-caregiver-page">
       {/* Quick Patient Assistance Alert (e.g. Washroom Urgency / Water) */}
@@ -80,7 +111,7 @@ export default function Caregiver() {
       )}
 
       {/* Red Alert Bar matching Figma (Visible when patient needs help or emergency) */}
-      {(isEmergency || symptoms.length > 0) && (
+      {showUrgencyAlert && (
         <div
           className={`figma-caregiver-alert-bar ${isEmergency ? 'emergency-flashing' : 'active'}`}
           role="alert"
@@ -88,12 +119,45 @@ export default function Caregiver() {
           <div className="alert-bar-left">
             <span className="alert-siren">🚨</span>
             <span className="alert-text">
-              <strong>ALERT:</strong> {patient.name} needs help {isEmergency ? '(URGENT - JUST NOW)' : '(symptoms updated)'}
+              <strong>ALERT:</strong> {patient.name} needs help {isEmergency ? '(URGENT - JUST NOW)' : `(${urgency} urgency)`}
             </span>
           </div>
-          <Link to="/doctors" className="btn-respond-now">
-            Respond now →
-          </Link>
+
+          <div className="alert-bar-actions">
+            <Link to="/doctors" className="btn-respond-now">
+              Respond now →
+            </Link>
+
+            {/* Phase 1: inline confirm UI for clearing the emergency flag */}
+            {isEmergency && !confirmClear && (
+              <button
+                type="button"
+                className="btn-resolve-emergency"
+                onClick={() => setConfirmClear(true)}
+              >
+                ✓ Mark Resolved
+              </button>
+            )}
+            {isEmergency && confirmClear && (
+              <span className="confirm-clear-row">
+                <span className="confirm-clear-label">Confirm resolution?</span>
+                <button
+                  type="button"
+                  className="btn-confirm-yes"
+                  onClick={handleClearEmergency}
+                >
+                  Yes, Clear
+                </button>
+                <button
+                  type="button"
+                  className="btn-confirm-cancel"
+                  onClick={() => setConfirmClear(false)}
+                >
+                  Cancel
+                </button>
+              </span>
+            )}
+          </div>
         </div>
       )}
 
@@ -111,10 +175,10 @@ export default function Caregiver() {
             {patient.name}, {patient.age} yrs <span className="gender-subtext">({patient.gender || 'Male'})</span>
           </h3>
           <p className="patient-language-line">
-            Language: <strong>{patient.language}</strong> · 🏥 {patient.roomNo || 'Ward 4B - Bed 12'}
+            Language: <strong>{patient.language}</strong> · 🏥 {patient.roomNo || 'Not assigned'}
           </p>
           <p className="patient-emergency-contact">
-            📞 Emergency: <strong>{patient.emergencyContact || '+91 98765 43210'}</strong>
+            📞 Emergency: <strong>{patient.emergencyContact || 'Not set'}</strong>
           </p>
           <p className="patient-living-note">
             📝 {patient.livingNote || 'At home with family. Non-verbal communication.'}
@@ -180,6 +244,43 @@ export default function Caregiver() {
           )}
         </div>
       </div>
+
+      {/* Booked Appointment Section — Phase 1: displays patient.appointment written by Doctors.jsx */}
+      {patient.appointment && (
+        <div className="figma-content-section" style={{ borderLeft: '4px solid var(--figma-green)' }}>
+          <h4 className="section-small-title">📅 Booked Appointment</h4>
+          <div className="appointment-details-grid">
+            <p className="appointment-row">
+              <span className="appt-label">Doctor: </span>
+              <strong>{patient.appointment.doctorName}</strong>
+            </p>
+            {patient.appointment.specialty && (
+              <p className="appointment-row">
+                <span className="appt-label">Specialty: </span>
+                <span>{patient.appointment.specialty}</span>
+              </p>
+            )}
+            <p className="appointment-row">
+              <span className="appt-label">Time: </span>
+              <span>{patient.appointment.time}</span>
+            </p>
+            {isValidUrl(patient.appointment.videoLink) && (
+              <p className="appointment-row">
+                <span className="appt-label">Video Call: </span>
+                <a
+                  href={patient.appointment.videoLink.trim()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="appointment-video-link"
+                  aria-label={`Join video consultation with ${patient.appointment.doctorName || 'doctor'}`}
+                >
+                  🎥 Join Consultation →
+                </a>
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Doctor's Clinical Notes Section */}
       {patient.doctorNotes && (

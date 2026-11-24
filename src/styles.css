@@ -3103,3 +3103,489 @@ body {
 
 
 
+
+/* =============================================================================
+   Phase 1 — Dev 3 New Utility Classes
+   Added to support: Remove Medicine, Clear Emergency, Advisory Panel, Appointment
+   ============================================================================= */
+
+/* Remove Medicine Button — small, destructive, ghost style */
+.btn-remove-medicine {
+  background: transparent;
+  border: 1px solid #e53e3e;
+  color: #e53e3e;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  margin-left: 8px;
+  transition: background 0.15s, color 0.15s;
+  line-height: 1;
+}
+.btn-remove-medicine:hover {
+  background: #fff5f5;
+}
+
+/* Alert bar action row — allows multiple buttons side-by-side */
+.alert-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* "Mark Resolved" button in emergency alert bar */
+.btn-resolve-emergency {
+  background: rgba(255,255,255,0.15);
+  border: 2px solid #fff;
+  color: #fff;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.btn-resolve-emergency:hover {
+  background: rgba(255,255,255,0.3);
+}
+
+/* Inline confirm row for clearing emergency */
+.confirm-clear-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.confirm-clear-label {
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.btn-confirm-yes {
+  background: #fff;
+  color: #c53030;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.btn-confirm-cancel {
+  background: transparent;
+  border: 1.5px solid rgba(255,255,255,0.7);
+  color: #fff;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+/* Inline advisory panel (replaces alert() in Medicines.jsx) */
+.advisory-panel {
+  background: #fffbeb;
+  border: 1px solid #f6ad55;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-top: 10px;
+  font-size: 0.9rem;
+  color: #744210;
+  line-height: 1.6;
+}
+.advisory-panel p {
+  margin: 0;
+}
+
+/* Booked Appointment section in Caregiver dashboard */
+.appointment-details-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+.appointment-row {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #1e293b;
+}
+.appt-label {
+  color: #64748b;
+  font-size: 0.85rem;
+  margin-right: 4px;
+}
+.appointment-video-link {
+  color: var(--figma-green, #22c55e);
+  font-weight: 700;
+  text-decoration: none;
+  border-bottom: 1.5px solid currentColor;
+}
+.appointment-video-link:hover {
+  opacity: 0.8;
+}
+
+/* =============================================================================
+   Phase 2 — Complete Medicine Management & Daily Tracking Styles
+   Preserves Sanjeevani green-and-white theme.
+   ============================================================================= */
+
+/* Daily Adherence Card */
+.phase2-adherence-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid var(--figma-green, #16a34a);
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin-bottom: 18px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+.phase2-adherence-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.phase2-adherence-sub {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+.phase2-adherence-percent {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--figma-green, #16a34a);
+  white-space: nowrap;
+}
+.phase2-progress-track {
+  width: 100%;
+  height: 10px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.phase2-progress-fill {
+  height: 100%;
+  background: var(--figma-green, #16a34a);
+  border-radius: 999px;
+  transition: width 0.25s ease;
+}
+.phase2-adherence-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.adherence-stat-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.adherence-stat-box .stat-value {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+.adherence-stat-box .stat-value.stat-green {
+  color: var(--figma-green, #16a34a);
+}
+.adherence-stat-box .stat-label {
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+/* Extended Add Medicine Form */
+.phase2-med-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.phase2-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.phase2-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.phase2-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #334155;
+}
+.phase2-form-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.phase2-times-selector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.phase2-form-status {
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  color: #166534;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* Phase 2 MedicineCard Layout */
+.phase2-med-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.phase2-med-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+}
+.phase2-med-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+.med-meta-badge {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.med-meta-text {
+  font-size: 0.82rem;
+  color: #64748b;
+}
+.phase2-med-instructions {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  color: #475569;
+  font-style: italic;
+}
+.phase2-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.phase2-dose-counter {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #475569;
+  background: #f1f5f9;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.phase2-doses-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 10px;
+  width: 100%;
+}
+.phase2-dose-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+.phase2-dose-time {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dose-time-label {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: #0f172a;
+}
+.phase2-status-pending {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #b45309;
+  background: #fef3c7;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.phase2-dose-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-undo-dose {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-undo-dose:hover {
+  background: #f1f5f9;
+}
+.inline-confirm-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-inline-danger {
+  background: #dc2626;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-inline-warning {
+  background: #d97706;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-inline-cancel {
+  background: #ffffff;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* History Section */
+.phase2-history-section {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin-top: 20px;
+}
+.phase2-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.phase2-history-title {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #0f172a;
+}
+.phase2-history-sub {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+.btn-toggle-history {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.phase2-history-body {
+  margin-top: 14px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 14px;
+}
+.phase2-history-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.phase2-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.phase2-history-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+.history-row-main,
+.history-row-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.history-time-pill {
+  font-size: 0.8rem;
+  color: #475569;
+  background: #e2e8f0;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.history-date {
+  font-size: 0.82rem;
+  color: #64748b;
+}
+.history-status-pill {
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.history-status-pill.taken {
+  background: #dcfce7;
+  color: #166534;
+}
+.history-status-pill.undone {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+@media (max-width: 640px) {
+  .phase2-form-grid {
+    grid-template-columns: 1fr;
+  }
+}

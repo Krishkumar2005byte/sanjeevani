@@ -69,6 +69,26 @@ export const DANGEROUS_PAIRS = [
 ];
 
 /**
+ * Checks whether any entry in the normalised name list matches a canonical drug name.
+ * Accepts exact matches and strength/form variants (e.g. "aspirin 75mg", "aspirin-ec").
+ * Uses a word-boundary approach: the medicine name must equal the drug name, or the
+ * character immediately after the drug name must be a space or hyphen — this prevents
+ * "iron" from accidentally matching "ironing" or similar false positives.
+ *
+ * @param {string[]} normalisedNames - Lowercased medicine names from the patient record.
+ * @param {string} drugLower        - Canonical drug name in lowercase.
+ * @returns {boolean}
+ */
+function matchesDrug(normalisedNames, drugLower) {
+  return normalisedNames.some((n) => {
+    if (n === drugLower) return true;                        // exact match
+    if (n.startsWith(drugLower + ' ')) return true;         // "aspirin 75mg"
+    if (n.startsWith(drugLower + '-')) return true;         // "aspirin-ec"
+    return false;
+  });
+}
+
+/**
  * Checks a list of medicine names against dangerous pairs.
  * @param {Array<string|object>} medicines - Array of medicine names or objects { name }
  * @returns {Array<string>} List of human-readable warning messages
@@ -85,8 +105,8 @@ export function checkInteractions(medicines = []) {
     const drugA = pair.drugs[0].toLowerCase();
     const drugB = pair.drugs[1].toLowerCase();
 
-    const hasDrugA = names.includes(drugA);
-    const hasDrugB = names.includes(drugB);
+    const hasDrugA = matchesDrug(names, drugA);
+    const hasDrugB = matchesDrug(names, drugB);
 
     if (hasDrugA && hasDrugB) {
       activeWarnings.push(`⚠️ DANGEROUS COMBINATION: ${pair.drugs[0]} + ${pair.drugs[1]} — ${pair.reason}`);
