@@ -1,17 +1,40 @@
 /**
- * Caregiver.jsx - Editorial Live Caregiver View
+ * Caregiver.jsx - Editorial Live Caregiver View with Inline Doctor Booking
  * Owner: Dev 3 & Member 4 (UI)
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { subscribeToPatient, clearQuickAlert } from '../lib/patientService.js';
+import {
+  subscribeToPatient,
+  clearQuickAlert,
+  bookAppointment
+} from '../lib/patientService.js';
+import doctorsData from '../data/doctors.json';
+import languages from '../data/languages.json';
 import UrgencyBadge from '../components/UrgencyBadge.jsx';
 import WarningBox from '../components/WarningBox.jsx';
+import DoctorCard from '../components/DoctorCard.jsx';
 import Icon from '../components/Icons.jsx';
+
+const SPECIALTIES = [
+  'All',
+  'Cardiologist',
+  'General Physician',
+  'Neurologist',
+  'Pulmonologist',
+  'Gastroenterologist',
+  'Emergency Medicine'
+];
 
 export default function Caregiver() {
   const [patient, setPatient] = useState(null);
+  const [showDoctorPicker, setShowDoctorPicker] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState('All');
+  const [selectedSpecialty, setSelectedSpecialty] = useState('All');
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const doctorSectionRef = useRef(null);
 
   useEffect(() => {
     const unsub = subscribeToPatient((data) => {
@@ -21,6 +44,30 @@ export default function Caregiver() {
       if (unsub) unsub();
     };
   }, []);
+
+  const openDoctorPicker = () => {
+    if (patient?.language && selectedLanguage === 'All') {
+      setSelectedLanguage(patient.language);
+    }
+    setShowDoctorPicker(true);
+    setTimeout(() => {
+      doctorSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 60);
+  };
+
+  const handleBookDoctor = async (doctor) => {
+    setBookingLoading(true);
+    await bookAppointment(doctor);
+    setBookingLoading(false);
+  };
+
+  const handleCopyVideoLink = (link) => {
+    if (navigator.clipboard && link) {
+      navigator.clipboard.writeText(link);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2500);
+    }
+  };
 
   if (!patient) {
     return (
@@ -33,7 +80,18 @@ export default function Caregiver() {
   const symptoms = patient.symptoms || [];
   const medicines = patient.medicines || [];
   const warnings = patient.warnings || [];
+  const appointment = patient.appointment;
   const isEmergency = Boolean(patient.emergency);
+
+  const filteredDoctors = doctorsData.filter((doc) => {
+    const matchesLang =
+      selectedLanguage === 'All' ||
+      doc.languages.some((l) => l.toLowerCase() === selectedLanguage.toLowerCase());
+    const matchesSpec =
+      selectedSpecialty === 'All' ||
+      doc.specialty.toLowerCase() === selectedSpecialty.toLowerCase();
+    return matchesLang && matchesSpec;
+  });
 
   return (
     <div className="page-wrap">
@@ -69,9 +127,53 @@ export default function Caregiver() {
               <strong>ALERT:</strong> {patient.name} needs attention {isEmergency ? '(URGENT)' : '(symptoms updated)'}
             </span>
           </div>
-          <Link to="/doctors" className="btn subtle sm">
-            Respond now
-          </Link>
+          <button
+            type="button"
+            className="btn subtle sm"
+            onClick={openDoctorPicker}
+          >
+            <Icon name="steth" />
+            Consult a doctor
+          </button>
+        </div>
+      )}
+
+      {/* Confirmed Appointment Banner on Caregiver Dashboard */}
+      {appointment && (
+        <div className="appt-banner" role="status">
+          <div className="appt-banner-info">
+            <span className="badge b-sage">
+              <Icon name="steth" />
+            </span>
+            <div>
+              <span className="sevhead-label" style={{ color: 'var(--ok)' }}>
+                APPOINTMENT CONFIRMED
+              </span>
+              <h3 style={{ margin: '2px 0 0', fontSize: '16px' }}>
+                {appointment.doctorName} · {appointment.specialty}
+              </h3>
+              <p style={{ margin: '2px 0 0', fontSize: '13px', color: 'var(--mute)' }}>
+                Slot: <strong>{appointment.time}</strong> · Room: {appointment.videoLink}
+              </p>
+            </div>
+          </div>
+          <div className="profile-actions">
+            <button
+              type="button"
+              className="btn sm"
+              onClick={() => handleCopyVideoLink(appointment.videoLink)}
+            >
+              <Icon name={copiedLink ? 'check' : 'cam'} />
+              {copiedLink ? 'Video link copied' : 'Copy video link'}
+            </button>
+            <button
+              type="button"
+              className="btn subtle sm"
+              onClick={openDoctorPicker}
+            >
+              Change doctor
+            </button>
+          </div>
         </div>
       )}
 
@@ -133,7 +235,7 @@ export default function Caregiver() {
           )}
         </section>
 
-        {/* Right Column: Reported Symptoms, Medicines & Warnings */}
+        {/* Right Column: Reported Symptoms, Medicines & Doctor Booking CTA */}
         <section>
           <div className="card">
             <h2 className="sec" style={{ marginBottom: '10px' }}>Reported symptoms</h2>
@@ -200,13 +302,114 @@ export default function Caregiver() {
           )}
 
           <div className="mt">
-            <Link to="/doctors" className="btn" style={{ width: '100%' }}>
+            <button
+              type="button"
+              className="btn"
+              style={{ width: '100%' }}
+              onClick={showDoctorPicker ? () => setShowDoctorPicker(false) : openDoctorPicker}
+            >
               <Icon name="steth" />
-              Book a {patient.language}-speaking doctor
-            </Link>
+              {showDoctorPicker
+                ? 'Hide available doctors'
+                : `Book a ${patient.language}-speaking doctor`}
+            </button>
           </div>
         </section>
       </div>
+
+      {/* Inline Doctor Directory & Booking Panel (stays inside Caregiver view) */}
+      {showDoctorPicker && (
+        <section ref={doctorSectionRef} className="caregiver-doc-panel">
+          <div className="sevhead" style={{ marginBottom: '12px' }}>
+            <div>
+              <h2 className="sec" style={{ marginBottom: '2px' }}>
+                Available doctors ({patient.language}-matched &amp; all specialists)
+              </h2>
+              <p className="empty-subtext" style={{ margin: 0 }}>
+                Book a teleconsultation directly from the Caregiver dashboard.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn subtle xs"
+              onClick={() => setShowDoctorPicker(false)}
+              aria-label="Close doctor list"
+            >
+              <Icon name="x" />
+              Close
+            </button>
+          </div>
+
+          <div className="filter-bar">
+            <div className="filter-item">
+              <label htmlFor="cg-filter-lang">Language:</label>
+              <select
+                id="cg-filter-lang"
+                className="sj-select"
+                value={selectedLanguage}
+                onChange={(e) => setSelectedLanguage(e.target.value)}
+              >
+                <option value="All">All Languages (28)</option>
+                {languages.map((l) => (
+                  <option key={l.code} value={l.name}>
+                    {l.nativeName} ({l.name})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="filter-item">
+              <label htmlFor="cg-filter-spec">Specialty:</label>
+              <select
+                id="cg-filter-spec"
+                className="sj-select"
+                value={selectedSpecialty}
+                onChange={(e) => setSelectedSpecialty(e.target.value)}
+              >
+                {SPECIALTIES.map((s) => (
+                  <option key={s} value={s}>
+                    {s === 'All' ? 'All Specialties' : s}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <span className="empty-subtext" style={{ marginLeft: 'auto' }}>
+              Showing {filteredDoctors.length} doctor{filteredDoctors.length === 1 ? '' : 's'}
+            </span>
+          </div>
+
+          <div className="doctors-grid">
+            {filteredDoctors.length > 0 ? (
+              filteredDoctors.map((doc) => (
+                <DoctorCard
+                  key={doc.id}
+                  doctor={doc}
+                  isBooked={appointment?.doctorId === doc.id}
+                  onBook={handleBookDoctor}
+                  bookingLoading={bookingLoading}
+                />
+              ))
+            ) : (
+              <div className="card" style={{ gridColumn: '1 / -1', textAlign: 'center' }}>
+                <p className="sub" style={{ marginBottom: '12px' }}>
+                  No doctors found matching “{selectedLanguage}” in “{selectedSpecialty}”.
+                </p>
+                <button
+                  type="button"
+                  className="btn sm"
+                  onClick={() => {
+                    setSelectedLanguage('All');
+                    setSelectedSpecialty('All');
+                  }}
+                >
+                  Show all doctors
+                </button>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

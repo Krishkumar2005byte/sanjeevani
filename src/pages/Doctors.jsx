@@ -63,10 +63,16 @@ export default function Doctors() {
     e.preventDefault();
     if (!newMedName.trim()) return;
 
-    await addMedicine({
+    const result = await addMedicine({
       name: `${newMedName.trim()}${newMedInstructions ? ` (${newMedInstructions})` : ''}`,
       time: newMedTime
     });
+
+    if (result?.duplicate) {
+      setRxSuccessMsg(`${newMedName.trim()} is already in ${patient?.name || 'patient'}'s active regimen (duplicate skipped).`);
+      setTimeout(() => setRxSuccessMsg(''), 4000);
+      return;
+    }
 
     setRxSuccessMsg(`Prescribed ${newMedName.trim()} to ${patient?.name || 'patient'}.`);
     setNewMedName('');

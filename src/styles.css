@@ -1359,11 +1359,218 @@ h2.sec {
   cursor: default;
 }
 
+.taken.on.clickable {
+  cursor: pointer;
+}
+
+.taken.on.clickable:hover {
+  background: #CBE8D5;
+}
+
 .taken.pending {
   background: var(--ambbg);
   border-color: transparent;
   color: var(--amb-ink);
   cursor: default;
+}
+
+/* Caregiver Inline Doctor Panel & Appointment Banner */
+.appt-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: var(--tint);
+  border: 1px solid color-mix(in srgb, var(--brand) 25%, transparent);
+  border-radius: 16px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+
+.appt-banner-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.caregiver-doc-panel {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+
+/* Enhanced Medicines Stats, Filters & Cards */
+.med-stats-grid {
+  display: grid;
+  grid-template-columns: 2fr 0.75fr 0.75fr;
+  gap: 14px;
+}
+
+.med-progress-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 20px;
+}
+
+.progress-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--tint);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--brand);
+  transition: width 0.25s ease;
+}
+
+.med-stat-mini {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 14px 18px;
+  gap: 2px;
+}
+
+.stat-num {
+  font-size: 24px;
+  line-height: 1.15;
+  font-weight: 700;
+}
+
+.inline-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.inline-notice.warn {
+  background: var(--ambbg);
+  border: 1px solid var(--amb-border);
+  color: var(--amb-ink);
+}
+
+.inline-notice.ok {
+  background: var(--okbg);
+  color: var(--ok);
+}
+
+.med-filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.med-card-enhanced {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px;
+}
+
+.med-card-enhanced.has-conflict {
+  border-color: #F4B8B4;
+  background: color-mix(in srgb, var(--redbg) 35%, var(--card));
+}
+
+.med-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.med-card-top .badge {
+  width: 44px;
+  height: 44px;
+  font-size: 20px;
+}
+
+.med-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.med-title-row b {
+  font-size: 15.5px;
+  color: var(--ink);
+}
+
+.med-conflict-pill {
+  background: var(--red-pill-bg);
+  color: var(--red-pill-ink);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 999px;
+}
+
+.med-time-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.med-time-tag {
+  background: var(--navbg);
+  border: 1px solid var(--line);
+  color: var(--mute);
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 999px;
+}
+
+.med-remove-btn {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--mute);
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  flex: none;
+  transition: all 0.15s ease;
+}
+
+.med-remove-btn:hover {
+  background: var(--redbg);
+  border-color: #F4B8B4;
+  color: var(--red-pill-ink);
+}
+
+.med-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.med-status-text {
+  font-size: 12px;
+  color: var(--mute);
+  font-weight: 500;
 }
 
 /* ==========================================================================
@@ -1646,6 +1853,7 @@ h2.sec {
   .roles-grid,
   .split,
   .meds-grid,
+  .med-stats-grid,
   .doctors-grid,
   .modal-grid,
   .form-grid-3,
