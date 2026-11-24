@@ -19,7 +19,7 @@ import {
   setQuickAlert
 } from '../lib/patientService.js';
 import { triageSymptoms } from '../lib/triage.js';
-import { getSymptomText, getQuickPhrases } from '../lib/translations.js';
+import { getSymptomText, getQuickPhrases, getUiText, getLanguageMeta } from '../lib/translations.js';
 import SymptomButton from '../components/SymptomButton.jsx';
 import UrgencyBadge from '../components/UrgencyBadge.jsx';
 import WarningBox from '../components/WarningBox.jsx';
@@ -90,12 +90,13 @@ export default function Patient() {
     };
   }, []);
 
-  const currentLangObj = languages.find((l) => l.code === langCode) || languages[0];
+  const currentLangObj = getLanguageMeta(langCode);
   const quickPhrases = getQuickPhrases(langCode);
+  const ui = getUiText(langCode);
 
-  const triggerSpeech = (spokenPhrase, locale, displayLabel, options) => {
+  const triggerSpeech = (spokenPhrase, locale, displayLabel, options = {}) => {
     setSpeakingText(displayLabel);
-    setLastSpoken({ phrase: spokenPhrase, locale, displayLabel });
+    setLastSpoken({ phrase: spokenPhrase, locale, displayLabel, options });
     setIsSpeaking(true);
     speak(spokenPhrase, locale, options);
 
@@ -107,7 +108,7 @@ export default function Patient() {
 
   const handleReplaySpeech = () => {
     if (!lastSpoken) return;
-    triggerSpeech(lastSpoken.phrase, lastSpoken.locale, lastSpoken.displayLabel);
+    triggerSpeech(lastSpoken.phrase, lastSpoken.locale, lastSpoken.displayLabel, lastSpoken.options);
   };
 
   const handleStopSpeech = () => {
@@ -175,10 +176,11 @@ export default function Patient() {
       triggerSpeech(
         textInfo.spoken,
         speechLocale,
-        `Speaking: “${symptom.name}” (${textInfo.label})`
+        `${ui.speakingLabel} “${textInfo.label}”${langCode !== 'en' ? ` (${symptom.name})` : ''}`,
+        { fallbackText: textInfo.spokenFallback }
       );
     } else {
-      setSpeakingText(`Unselected: ${symptom.name}`);
+      setSpeakingText(`Unselected: ${textInfo.label}`);
       setIsSpeaking(false);
     }
 
@@ -214,7 +216,12 @@ export default function Patient() {
 
   const handlePhraseClick = async (phrase) => {
     const speechLocale = currentLangObj.speechLocale || 'hi-IN';
-    triggerSpeech(phrase.spoken, speechLocale, `Speaking: “${phrase.label}”`);
+    triggerSpeech(
+      phrase.spoken,
+      speechLocale,
+      `${ui.speakingLabel} “${phrase.label}”`,
+      { fallbackText: phrase.spokenFallback }
+    );
 
     if (phrase.id === 'washroom') {
       await setQuickAlert('Washroom Urgency (Just now)');
@@ -236,14 +243,12 @@ export default function Patient() {
 
   const handleEmergencyClick = async () => {
     setEmergencyActive(true);
-    const emergencySpeech =
-      langCode === 'hi'
-        ? 'आपातकालीन सहायता की आवश्यकता है! तुरंत मदद करें!'
-        : 'Emergency help requested! Please assist immediately!';
+    const emergencySpeech = ui.emergencySpoken || 'Emergency help requested! Please assist immediately!';
     triggerSpeech(
       emergencySpeech,
       currentLangObj.speechLocale || 'hi-IN',
-      'Speaking: “Emergency, I need help now” (आपातकालीन सहायता)'
+      `${ui.speakingLabel} “${ui.emergencyHelp}”`,
+      { fallbackText: ui.emergencySpokenFallback }
     );
 
     await triggerEmergency();
@@ -288,17 +293,18 @@ export default function Patient() {
             <span>{patientRecord?.roomNo || 'Ward 4B - Bed 12'}</span>
             <button
               type="button"
-              className="link"
+              className="link hi"
               onClick={handleOpenEditModal}
               title="Customize patient name, age, and info"
             >
-              Edit Profile
+              {ui.editProfile}
             </button>
           </span>
 
           <button type="button" className="sos" onClick={handleEmergencyClick}>
             <Icon name="siren" />
-            Emergency Help <span className="hi">(आपातकालीन सहायता)</span>
+            <span>Emergency Help</span>
+            {langCode !== 'en' && <span className="hi">({ui.emergencyHelp})</span>}
           </button>
         </div>
       </div>
@@ -367,17 +373,18 @@ export default function Patient() {
           {/* Left Column: 2x4 Select/Unselect Symptom Grid */}
           <section>
             <div className="sevhead" style={{ marginBottom: '12px' }}>
-              <h2 className="sec" style={{ margin: 0 }}>
-                Tap what you feel / <span className="hi">जो महसूस हो उसे छुएं</span>
+              <h2 className="sec hi" style={{ margin: 0 }}>
+                Tap what you feel
+                {langCode !== 'en' ? ` / ${ui.tapWhatYouFeel}` : ''}
               </h2>
               {activeSymptoms.length > 0 && (
                 <button
                   type="button"
-                  className="btn subtle xs"
+                  className="btn subtle xs hi"
                   onClick={handleClearAllSymptoms}
                 >
                   <Icon name="x" />
-                  Clear all ({activeSymptoms.length})
+                  {ui.clearAll} ({activeSymptoms.length})
                 </button>
               )}
             </div>
@@ -401,13 +408,13 @@ export default function Patient() {
 
           {/* Right Column: Phrases, Speech Feedback, AI Urgency, 8-Gesture Camera */}
           <section>
-            <h2 className="sec">Quick Patient Phrases</h2>
+            <h2 className="sec hi">{ui.quickPhrases}</h2>
             <div className="chips">
               {quickPhrases.map((phrase) => (
                 <button
                   key={phrase.id}
                   type="button"
-                  className="chip"
+                  className="chip hi"
                   onClick={() => handlePhraseClick(phrase)}
                 >
                   <span>{phrase.label}</span>
@@ -415,12 +422,12 @@ export default function Patient() {
               ))}
             </div>
 
-            <h2 className="sec mt">Speech Feedback</h2>
+            <h2 className="sec mt hi">{ui.speechFeedback}</h2>
             <div className={`voice ${isSpeaking ? 'live' : ''}`} role="status" aria-live="polite">
               <span className="vgrp">
                 <Icon name="speak" />
-                <span className="txt">
-                  {speakingText || 'Ready. Tap a symptom or phrase to speak.'}
+                <span className="txt hi">
+                  {speakingText || ui.speechReady}
                 </span>
               </span>
               <span className="vgrp">
@@ -454,31 +461,34 @@ export default function Patient() {
               </span>
             </div>
 
-            <h2 className="sec mt">AI Urgency &amp; Assistant</h2>
+            <h2 className="sec mt hi">{ui.aiUrgency}</h2>
             <div className="card flush">
               <div className="pad">
                 <div className="sevhead">
-                  <span className="sevhead-label">AI URGENCY STATUS</span>
-                  <UrgencyBadge urgency={urgency} />
+                  <span className="sevhead-label hi">{ui.aiUrgencyStatus}</span>
+                  <UrgencyBadge urgency={urgency} langCode={langCode} />
                 </div>
 
                 {activeSymptoms.length > 0 && (
                   <div className="chips" style={{ marginTop: '10px' }}>
-                    {activeSymptoms.map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        className="chip tag-active"
-                        style={{ cursor: 'pointer' }}
-                        onClick={() => {
-                          const symObj = symptomsData.find((item) => item.name === s);
-                          if (symObj) handleSymptomClick(symObj);
-                        }}
-                        title={`Click to unselect ${s}`}
-                      >
-                        {s} ×
-                      </button>
-                    ))}
+                    {activeSymptoms.map((s) => {
+                      const symObj = symptomsData.find((item) => item.name === s);
+                      const label = symObj ? getSymptomText(symObj.id, langCode).label : s;
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          className="chip tag-active hi"
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => {
+                            if (symObj) handleSymptomClick(symObj);
+                          }}
+                          title={`Click to unselect ${s}`}
+                        >
+                          {langCode === 'en' ? s : label} ×
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
 
@@ -486,14 +496,15 @@ export default function Patient() {
                   {aiSummary || 'Patient is resting comfortably. No symptoms reported.'}
                 </p>
               </div>
-              <WarningBox message="AI guidance only, consult a doctor." />
+              <WarningBox langCode={langCode} />
             </div>
 
-            <h2 className="sec mt">Camera Integration (8 Hand Gestures)</h2>
+            <h2 className="sec mt hi">{ui.cameraIntegration}</h2>
             <WebcamGesture
               onGestureDetected={handleGestureDetected}
               highlightedSymptomName={symptomsData[highlightedIndex]?.name}
               activeSymptoms={activeSymptoms}
+              langCode={langCode}
             />
           </section>
         </div>

@@ -13,6 +13,7 @@ import {
 } from '../lib/patientService.js';
 import doctorsData from '../data/doctors.json';
 import languages from '../data/languages.json';
+import { getUiText, getLangCodeByName } from '../lib/translations.js';
 import UrgencyBadge from '../components/UrgencyBadge.jsx';
 import WarningBox from '../components/WarningBox.jsx';
 import DoctorCard from '../components/DoctorCard.jsx';
@@ -35,16 +36,27 @@ export default function Caregiver() {
   const [selectedSpecialty, setSelectedSpecialty] = useState('All');
   const [bookingLoading, setBookingLoading] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [langCode, setLangCode] = useState(() => localStorage.getItem('sanjeevani_lang_code') || 'hi');
   const doctorSectionRef = useRef(null);
 
   useEffect(() => {
     const unsub = subscribeToPatient((data) => {
       setPatient(data);
+      if (data?.language) {
+        setLangCode(getLangCodeByName(data.language));
+      }
     });
+    const handleLang = (e) => {
+      if (e.detail?.code) setLangCode(e.detail.code);
+    };
+    window.addEventListener('sanjeevani_lang_changed', handleLang);
     return () => {
       if (unsub) unsub();
+      window.removeEventListener('sanjeevani_lang_changed', handleLang);
     };
   }, []);
+
+  const ui = getUiText(langCode);
 
   const openDoctorPicker = () => {
     if (patient?.language && selectedLanguage === 'All') {
@@ -100,7 +112,7 @@ export default function Caregiver() {
 
   return (
     <div className="page-wrap">
-      <h1 className="page-h1">Caregiver live view</h1>
+      <h1 className="page-h1 hi">{ui.caregiverLiveTitle}</h1>
       <p className="sub">
         {patient.name}, {patient.age} yrs ({patient.gender || 'Male'}) · {patient.roomNo || 'Ward 4B - Bed 12'}
       </p>
@@ -253,14 +265,14 @@ export default function Caregiver() {
           <div className="card flush mt">
             <div className="pad">
               <div className="sevhead">
-                <span className="sevhead-label">AI URGENCY STATUS</span>
-                <UrgencyBadge urgency={patient.urgency} />
+                <span className="sevhead-label hi">{ui.aiUrgencyStatus}</span>
+                <UrgencyBadge urgency={patient.urgency} langCode={langCode} />
               </div>
               <p style={{ margin: '10px 0 0', fontSize: '14.5px', color: 'var(--ink)' }}>
                 {patient.aiSummary || 'Patient is stable. No critical symptoms reported.'}
               </p>
             </div>
-            <WarningBox message="AI guidance only, consult a doctor." />
+            <WarningBox langCode={langCode} />
           </div>
 
           {patient.doctorNotes && (
@@ -276,7 +288,7 @@ export default function Caregiver() {
         {/* Right Column: Reported Symptoms, Medicines & Doctor Booking CTA */}
         <section>
           <div className="card">
-            <h2 className="sec" style={{ marginBottom: '10px' }}>Reported symptoms</h2>
+            <h2 className="sec hi" style={{ marginBottom: '10px' }}>{ui.reportedSymptoms}</h2>
             <div className="chips">
               {symptoms.length > 0 ? (
                 symptoms.map((s, idx) => (
@@ -292,7 +304,7 @@ export default function Caregiver() {
 
           <div className="card mt">
             <div className="sevhead" style={{ marginBottom: '8px' }}>
-              <h2 className="sec" style={{ margin: 0 }}>Current medicines</h2>
+              <h2 className="sec hi" style={{ margin: 0 }}>{ui.currentMedicines}</h2>
               <Link to="/medicines" className="link" style={{ fontSize: '13px' }}>
                 + Manage medicines
               </Link>

@@ -4,15 +4,18 @@
  */
 
 import React from 'react';
+import { getUiText } from '../lib/translations';
 import Icon from './Icons';
 
 export default function MedicineCard({
   medicine,
   index,
   hasConflict = false,
+  langCode = 'en',
   onToggleTaken,
   onRemove
 }) {
+  const ui = getUiText(langCode);
   const times = (medicine.time || 'Morning')
     .split(/&|,/)
     .map((t) => t.trim())
@@ -58,7 +61,7 @@ export default function MedicineCard({
         </span>
         <button
           type="button"
-          className={`taken ${medicine.taken ? 'on clickable' : ''}`}
+          className={`taken hi ${medicine.taken ? 'on clickable' : ''}`}
           aria-pressed={medicine.taken}
           onClick={() => onToggleTaken(index)}
           title={medicine.taken ? 'Click to mark as pending' : 'Mark dose as taken'}
@@ -66,10 +69,10 @@ export default function MedicineCard({
           {medicine.taken ? (
             <>
               <Icon name="check" />
-              Taken
+              {ui.taken}
             </>
           ) : (
-            'Mark as taken'
+            ui.markAsTaken
           )}
         </button>
       </div>

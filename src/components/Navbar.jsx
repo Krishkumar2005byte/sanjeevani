@@ -1,5 +1,5 @@
 /**
- * Navbar.jsx - Light Editorial Navigation Bar with 28-Language Switcher & Role Session
+ * Navbar.jsx - Multilingual Editorial Navigation Bar with Featured 6-Language + 28-Language Picker
  * Owner: Dev 3 & Member 4 (UI)
  */
 
@@ -8,12 +8,15 @@ import { NavLink, Link, useNavigate } from 'react-router-dom';
 import languages from '../data/languages.json';
 import { getPatient, setPatientLanguage, resetPatient } from '../lib/patientService';
 import { subscribeToAuth, logout } from '../lib/authService';
+import { getUiText } from '../lib/translations';
 import Icon from './Icons';
+
+const FEATURED_CODES = ['hi', 'en', 'sd', 'pa', 'mr', 'mai'];
 
 export default function Navbar() {
   const navigate = useNavigate();
   const [resetting, setResetting] = useState(false);
-  const [currentLangCode, setCurrentLangCode] = useState('hi');
+  const [currentLangCode, setCurrentLangCode] = useState(() => localStorage.getItem('sanjeevani_lang_code') || 'hi');
   const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
@@ -68,6 +71,10 @@ export default function Navbar() {
     navigate('/login');
   };
 
+  const ui = getUiText(currentLangCode);
+  const featuredLangs = languages.filter((l) => FEATURED_CODES.includes(l.code));
+  const otherLangs = languages.filter((l) => !FEATURED_CODES.includes(l.code));
+
   return (
     <header className="sj-header">
       <NavLink to="/" className="sj-brand">
@@ -78,25 +85,25 @@ export default function Navbar() {
               <Icon name="leaf" />
             </span>
           </span>
-          <small className="sj-tagline">A voice for patients who cannot speak</small>
+          <small className="sj-tagline hi">{ui.tagline}</small>
         </div>
       </NavLink>
 
       <nav className="sj-nav" aria-label="Main">
-        <NavLink to="/" className={({ isActive }) => `sj-nav-link ${isActive ? 'on' : ''}`} end>
-          Home
+        <NavLink to="/" className={({ isActive }) => `sj-nav-link hi ${isActive ? 'on' : ''}`} end>
+          {ui.navHome}
         </NavLink>
-        <NavLink to="/patient" className={({ isActive }) => `sj-nav-link ${isActive ? 'on' : ''}`}>
-          Patient
+        <NavLink to="/patient" className={({ isActive }) => `sj-nav-link hi ${isActive ? 'on' : ''}`}>
+          {ui.navPatient}
         </NavLink>
-        <NavLink to="/caregiver" className={({ isActive }) => `sj-nav-link ${isActive ? 'on' : ''}`}>
-          Caregiver
+        <NavLink to="/caregiver" className={({ isActive }) => `sj-nav-link hi ${isActive ? 'on' : ''}`}>
+          {ui.navCaregiver}
         </NavLink>
-        <NavLink to="/doctors" className={({ isActive }) => `sj-nav-link ${isActive ? 'on' : ''}`}>
-          Doctor
+        <NavLink to="/doctors" className={({ isActive }) => `sj-nav-link hi ${isActive ? 'on' : ''}`}>
+          {ui.navDoctor}
         </NavLink>
-        <NavLink to="/medicines" className={({ isActive }) => `sj-nav-link ${isActive ? 'on' : ''}`}>
-          Medicines
+        <NavLink to="/medicines" className={({ isActive }) => `sj-nav-link hi ${isActive ? 'on' : ''}`}>
+          {ui.navMedicines}
         </NavLink>
       </nav>
 
@@ -113,7 +120,7 @@ export default function Navbar() {
                 className="btn subtle xs"
                 title="Switch between Patient, Caregiver, or Doctor"
               >
-                Switch Role
+                {ui.switchRole}
               </Link>
               <button
                 type="button"
@@ -128,7 +135,7 @@ export default function Navbar() {
           </div>
         ) : (
           <Link to="/login" className="btn subtle xs">
-            Select Role
+            {ui.selectRoleBtn}
           </Link>
         )}
 
@@ -137,14 +144,23 @@ export default function Navbar() {
           className="sj-select"
           value={currentLangCode}
           onChange={handleLanguageChange}
-          aria-label="Select language (28 languages)"
-          title="Select Patient & UI Language (28 Languages)"
+          aria-label="Select language (Full text & voice)"
+          title="Select Language (Text & Voice)"
         >
-          {languages.map((lang) => (
-            <option key={lang.code} value={lang.code}>
-              {lang.nativeName} ({lang.code.toUpperCase()})
-            </option>
-          ))}
+          <optgroup label="Full Text & Voice">
+            {featuredLangs.map((lang) => (
+              <option key={lang.code} value={lang.code}>
+                {lang.nativeName} ({lang.name})
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label="More Indian Languages">
+            {otherLangs.map((lang) => (
+              <option key={lang.code} value={lang.code}>
+                {lang.nativeName} ({lang.name})
+              </option>
+            ))}
+          </optgroup>
         </select>
 
         <button
@@ -154,7 +170,7 @@ export default function Navbar() {
           title="Reset demo data"
           disabled={resetting}
         >
-          {resetting ? '...' : 'Reset'}
+          {resetting ? '...' : ui.reset}
         </button>
       </div>
     </header>

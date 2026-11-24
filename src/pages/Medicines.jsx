@@ -14,6 +14,7 @@ import {
   normalizeMedicineName
 } from '../lib/patientService.js';
 import { checkInteractions } from '../lib/interactions.js';
+import { getUiText, getLangCodeByName } from '../lib/translations.js';
 import MedicineCard from '../components/MedicineCard.jsx';
 import Icon from '../components/Icons.jsx';
 
@@ -24,15 +25,24 @@ export default function Medicines() {
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'pending' | 'taken'
   const [timeFilter, setTimeFilter] = useState('All'); // 'All' | 'Morning' | 'Afternoon' | 'Night'
   const [feedback, setFeedback] = useState(null); // { type: 'error' | 'success', text: string }
+  const [langCode, setLangCode] = useState(() => localStorage.getItem('sanjeevani_lang_code') || 'hi');
 
   useEffect(() => {
     const unsub = subscribeToPatient((data) => {
       setPatient(data);
+      if (data?.language) setLangCode(getLangCodeByName(data.language));
     });
+    const handleLang = (e) => {
+      if (e.detail?.code) setLangCode(e.detail.code);
+    };
+    window.addEventListener('sanjeevani_lang_changed', handleLang);
     return () => {
       if (unsub) unsub();
+      window.removeEventListener('sanjeevani_lang_changed', handleLang);
     };
   }, []);
+
+  const ui = getUiText(langCode);
 
   const medicines = useMemo(() => patient?.medicines || [], [patient]);
   const warnings = useMemo(() => patient?.warnings || [], [patient]);
@@ -148,9 +158,9 @@ export default function Medicines() {
     <div className="page-wrap">
       <div className="doc-header-bar">
         <div>
-          <h1 className="page-h1">Medicines</h1>
-          <p className="sub" style={{ marginBottom: 0 }}>
-            Daily medication schedule for {patient.name} with duplicate protection &amp; live interaction safety.
+          <h1 className="page-h1 hi">{ui.medicinesTitle}</h1>
+          <p className="sub hi" style={{ marginBottom: 0 }}>
+            {ui.medicinesSub}
           </p>
         </div>
         <span className={`sev ${warnings.length > 0 ? 'high' : 'low'}`}>
@@ -224,8 +234,8 @@ export default function Medicines() {
             ))}
           </div>
 
-          <button type="submit" className="btn" disabled={Boolean(duplicateMatch)}>
-            Add
+          <button type="submit" className="btn hi" disabled={Boolean(duplicateMatch)}>
+            {ui.addMedicine}
           </button>
         </form>
 
@@ -320,6 +330,7 @@ export default function Medicines() {
               medicine={med}
               index={originalIndex}
               hasConflict={conflictingDrugNames.has(normalizeMedicineName(med.name))}
+              langCode={langCode}
               onToggleTaken={handleToggleTaken}
               onRemove={handleRemove}
             />
