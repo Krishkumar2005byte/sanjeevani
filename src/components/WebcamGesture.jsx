@@ -11,6 +11,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
 import { GESTURE_DEFINITIONS, classifyHandLandmarks } from '../lib/gestures.js';
+import Icon from './Icons.jsx';
 
 const LOCAL_WASM_PATH = '/mediapipe/wasm';
 const LOCAL_MODEL_PATH = '/mediapipe/hand_landmarker.task';
@@ -461,164 +462,115 @@ export default function WebcamGesture({ onGestureDetected, highlightedSymptomNam
 
   return (
     <div
-      className="webcam-gesture-card"
+      className="card flush"
       style={
         handDetected
-          ? { borderColor: '#10b981', boxShadow: '0 0 0 3px rgba(16, 185, 129, 0.18)' }
+          ? { borderColor: 'var(--brand)', boxShadow: '0 0 0 3px rgba(19, 78, 50, 0.14)' }
           : undefined
       }
     >
-      <div className="webcam-header">
-        <div className="webcam-header-title">
-          <span className="webcam-icon">📹</span>
+      <div className="split">
+        <div className="l">
           <div>
-            <h4>MediaPipe Hand Gesture Camera</h4>
-            <p className="webcam-subtitle">Non-verbal patient communication via hand movements</p>
+            <h3>MediaPipe Hand Gesture Camera</h3>
+            <p
+              style={{ margin: '6px 0 0', fontSize: '12px', color: handDetected ? 'var(--ok)' : 'var(--mute)', fontWeight: 500 }}
+              role="status"
+              aria-live="polite"
+            >
+              {isCameraActive
+                ? handDetected
+                  ? liveGesture
+                    ? `Hand Detected · ${liveGesture.name}`
+                    : 'Hand Detected · Ready'
+                  : modelStatus === 'loading'
+                    ? 'Loading MediaPipe Hand Model...'
+                    : 'Camera Active · No Hand Detected'
+                : 'Non-verbal hand tracking'}
+            </p>
+            {highlightedSymptomName && (
+              <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--brand)', fontWeight: 600 }}>
+                Target: {highlightedSymptomName}
+              </p>
+            )}
+            {cameraError && (
+              <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--amb-ink)' }} role="alert">
+                {cameraError}
+              </p>
+            )}
           </div>
+
+          <button
+            type="button"
+            className={`obtn ${isCameraActive ? 'active' : ''}`}
+            onClick={isCameraActive ? stopCamera : startCamera}
+            disabled={isCameraLoading}
+          >
+            {isCameraLoading
+              ? 'Starting...'
+              : isCameraActive
+                ? 'Stop Camera'
+                : 'Start Camera'}
+          </button>
         </div>
 
-        <button
-          type="button"
-          className={`btn-webcam-toggle ${isCameraActive ? 'active' : ''}`}
-          onClick={isCameraActive ? stopCamera : startCamera}
-          disabled={isCameraLoading}
-        >
-          {isCameraLoading
-            ? '⏳ Starting...'
-            : isCameraActive
-              ? '⏹ Stop Camera'
-              : '▶ Start Camera'}
-        </button>
-      </div>
-
-      {/* Visible Live Status Strip */}
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '8px',
-          padding: '8px 12px',
-          borderRadius: '8px',
-          backgroundColor: handDetected ? '#ecfdf5' : '#f8fafc',
-          border: `1px solid ${handDetected ? '#6ee7b7' : '#e2e8f0'}`,
-          fontSize: '0.84rem',
-          fontWeight: 700,
-          color: handDetected ? '#065f46' : '#334155'
-        }}
-        role="status"
-        aria-live="polite"
-      >
-        <span>
-          {isCameraActive
-            ? handDetected
-              ? liveGesture
-                ? `${liveGesture.emoji} Hand Detected · Gesture: ${liveGesture.name}`
-                : '🖐️ Hand Detected · Ready'
-              : modelStatus === 'loading'
-                ? '⏳ Loading MediaPipe Hand Model...'
-                : '👀 Camera Active · No Hand Detected'
-            : '📷 Camera Inactive'}
-        </span>
-        {highlightedSymptomName && (
-          <span style={{ color: '#0a4f3d' }}>
-            Target: <strong>{highlightedSymptomName}</strong>
-          </span>
-        )}
-      </div>
-
-      {cameraError && (
-        <div className="webcam-notice" role="alert">
-          ℹ️ {cameraError}
-        </div>
-      )}
-
-      {/* Video Viewport */}
-      <div className="webcam-viewport-container">
-        {isCameraActive ? (
-          <div className="video-wrapper">
-            <video
-              ref={videoRef}
-              className="webcam-video-feed"
-              style={{
-                display: 'block',
-                width: '100%',
-                minHeight: '220px',
-                maxHeight: '260px',
-                objectFit: 'cover'
-              }}
-              autoPlay
-              playsInline
-              muted
-            />
-            <canvas
-              ref={canvasRef}
-              style={{
-                position: 'absolute',
-                inset: 0,
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                transform: 'scaleX(-1)',
-                pointerEvents: 'none'
-              }}
-            />
-            <div className="gesture-tracking-overlay">
-              <span
-                className="tracking-status-pill"
-                style={{ backgroundColor: liveStatus.bg }}
-              >
+        <div className="r">
+          {isCameraActive ? (
+            <>
+              <video
+                ref={videoRef}
+                className="webcam-video-feed"
+                style={{ transform: 'scaleX(-1)' }}
+                autoPlay
+                playsInline
+                muted
+              />
+              <canvas
+                ref={canvasRef}
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  transform: 'scaleX(-1)',
+                  pointerEvents: 'none'
+                }}
+              />
+              <span className="tracking-pill" style={{ backgroundColor: liveStatus.bg }}>
                 {liveStatus.text}
               </span>
-            </div>
-          </div>
-        ) : (
-          <div className="webcam-standby-screen">
-            <span className="standby-icon">{isCameraLoading ? '⏳' : '👋'}</span>
-            <p className="standby-text">
-              {isCameraLoading ? (
-                'Starting laptop webcam... Please allow camera permission if prompted.'
-              ) : (
-                <>
-                  Camera is currently off. Click <strong>Start Camera</strong> to enable live hand tracking.
-                </>
-              )}
-            </p>
-          </div>
-        )}
-
-        {/* Live Detected Gesture Banner */}
-        {detectedGesture && (
-          <div className="detected-gesture-badge">
-            <span className="gesture-big-emoji">{detectedGesture.emoji}</span>
-            <div className="gesture-badge-text">
-              <strong>{detectedGesture.name}: {detectedGesture.label}</strong>
-              <span className="gesture-confidence">
-                Confidence: {confidence}%{inCooldown ? ' · Cooldown active' : ''}
-              </span>
-            </div>
-          </div>
-        )}
+            </>
+          ) : (
+            <>
+              <Icon name="hand" />
+              <small>{isCameraLoading ? 'Starting webcam...' : 'Non-verbal communication'}</small>
+            </>
+          )}
+        </div>
       </div>
 
-      {/* Gesture Guide & Accessibility Buttons */}
-      <div className="gesture-tester-section">
-        <span className="tester-label">Supported Hand Gestures (Live Camera or Quick Tap):</span>
-        <div className="gesture-chips-grid">
+      <div className="gesture-bar">
+        <span className="gesture-bar-label">Supported Hand Gestures (Live Camera or Quick Tap)</span>
+        <div className="chips">
           {Object.values(GESTURE_DEFINITIONS).map((g) => (
             <button
               key={g.id}
               type="button"
-              className={`gesture-trigger-btn ${detectedGesture?.id === g.id ? 'active' : ''}`}
+              className={`chip ${detectedGesture?.id === g.id ? 'tag-active' : ''}`}
               onClick={() => triggerGesture(g, 100)}
               title={g.label}
             >
-              <span className="chip-emoji">{g.emoji}</span>
-              <span className="chip-name">{g.name}</span>
+              <span>{g.name}</span>
             </button>
           ))}
         </div>
+
+        {detectedGesture && (
+          <div className="gesture-detected-strip">
+            {detectedGesture.name}: {detectedGesture.label} ({confidence}%{inCooldown ? ' · Cooldown' : ''})
+          </div>
+        )}
       </div>
     </div>
   );

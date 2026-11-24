@@ -1,16 +1,9 @@
 /**
- * Patient.jsx - Patient Voiceboard & Emergency Alert (Figma Design)
- * Owner: Dev 1 (Patient Experience)
- * 
- * Features:
- * - Default Delhi Metro Announcer Voice with signature pre-chime
- * - 28 Language Switcher & Quick Patient Phrases
- * - 4x2 Symptom Grid with large touch targets
- * - Speaking bubble & Full-width Red Emergency Help button
- * - Clean layout strictly matching user Figma design
+ * Patient.jsx - Two-Column Editorial Patient Voiceboard & Sticky Emergency Strip
+ * Owner: Dev 1 & Member 4 (UI)
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import symptomsData from '../data/symptoms.json';
 import languages from '../data/languages.json';
 import { speak } from '../lib/speech.js';
@@ -19,16 +12,16 @@ import {
   addSymptom,
   setTriageResult,
   triggerEmergency,
-  setPatientLanguage,
   updatePatientProfile,
   setQuickAlert
 } from '../lib/patientService.js';
 import { triageSymptoms } from '../lib/triage.js';
-import { getSymptomText, getUiText, getQuickPhrases } from '../lib/translations.js';
+import { getSymptomText, getQuickPhrases } from '../lib/translations.js';
 import SymptomButton from '../components/SymptomButton.jsx';
 import UrgencyBadge from '../components/UrgencyBadge.jsx';
 import WarningBox from '../components/WarningBox.jsx';
 import WebcamGesture from '../components/WebcamGesture.jsx';
+import Icon from '../components/Icons.jsx';
 
 export default function Patient() {
   const [langCode, setLangCode] = useState('hi');
@@ -38,9 +31,13 @@ export default function Patient() {
   const [aiSummary, setAiSummary] = useState('');
   const [emergencyActive, setEmergencyActive] = useState(false);
   const [speakingText, setSpeakingText] = useState(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [lastSpoken, setLastSpoken] = useState(null);
   const [alertNotification, setAlertNotification] = useState(null);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const speakTimerRef = useRef(null);
+
   const [profileForm, setProfileForm] = useState({
     name: 'Ramesh Kumar',
     age: 62,
@@ -69,7 +66,6 @@ export default function Patient() {
         livingNote: patient.livingNote || 'At home with family. Speaks quietly.'
       });
 
-      // Match patient language to one of the 28 languages
       const matched = languages.find(
         (l) => l.name.toLowerCase() === (patient.language || 'hindi').toLowerCase()
       );
@@ -79,32 +75,46 @@ export default function Patient() {
     }
     loadData();
 
-    // Listen for language changes from Navbar
     const handleGlobalLangChange = (e) => {
       if (e.detail?.code) {
         setLangCode(e.detail.code);
       }
     };
     window.addEventListener('sanjeevani_lang_changed', handleGlobalLangChange);
-    return () => window.removeEventListener('sanjeevani_lang_changed', handleGlobalLangChange);
+    return () => {
+      window.removeEventListener('sanjeevani_lang_changed', handleGlobalLangChange);
+      if (speakTimerRef.current) clearTimeout(speakTimerRef.current);
+    };
   }, []);
 
   const currentLangObj = languages.find((l) => l.code === langCode) || languages[0];
-  const ui = getUiText(langCode);
   const quickPhrases = getQuickPhrases(langCode);
 
-  const handleLanguageSelect = async (e) => {
-    const newCode = e.target.value;
-    setLangCode(newCode);
-    const sel = languages.find((l) => l.code === newCode);
-    if (sel) {
-      await setPatientLanguage(sel.name);
-      setPatientRecord((prev) => (prev ? { ...prev, language: sel.name } : prev));
-      window.dispatchEvent(new CustomEvent('sanjeevani_lang_changed', { detail: sel }));
-    }
+  const triggerSpeech = (spokenPhrase, locale, displayLabel, options) => {
+    setSpeakingText(displayLabel);
+    setLastSpoken({ phrase: spokenPhrase, locale, displayLabel });
+    setIsSpeaking(true);
+    speak(spokenPhrase, locale, options);
+
+    if (speakTimerRef.current) clearTimeout(speakTimerRef.current);
+    speakTimerRef.current = setTimeout(() => {
+      setIsSpeaking(false);
+    }, 3800);
   };
 
-  // Open modal and load current patient details
+  const handleReplaySpeech = () => {
+    if (!lastSpoken) return;
+    triggerSpeech(lastSpoken.phrase, lastSpoken.locale, lastSpoken.displayLabel);
+  };
+
+  const handleStopSpeech = () => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    if (speakTimerRef.current) clearTimeout(speakTimerRef.current);
+    setIsSpeaking(false);
+  };
+
   const handleOpenEditModal = () => {
     if (patientRecord) {
       setProfileForm({
@@ -120,7 +130,6 @@ export default function Patient() {
     setIsEditProfileOpen(true);
   };
 
-  // Save customized patient profile
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     const updated = await updatePatientProfile({
@@ -136,7 +145,6 @@ export default function Patient() {
     setPatientRecord(updated);
     setIsEditProfileOpen(false);
 
-    // If language was changed in profile, update UI language as well
     const matchedLang = languages.find(
       (l) => l.name.toLowerCase() === (updated.language || '').toLowerCase()
     );
@@ -146,7 +154,6 @@ export default function Patient() {
     }
   };
 
-  // Handle symptom tap (speaks with default Delhi Metro announcer voice)
   const handleSymptomClick = async (symptom) => {
     const clickedIdx = symptomsData.findIndex((s) => s.id === symptom.id);
     if (clickedIdx !== -1) {
@@ -156,64 +163,61 @@ export default function Patient() {
     const textInfo = getSymptomText(symptom.id, langCode);
     const speechLocale = currentLangObj.speechLocale || 'hi-IN';
 
-    // 1. Spoken vocalization
-    speak(textInfo.spoken, speechLocale);
-    setSpeakingText(`"${textInfo.spoken}" · ${symptom.name}`);
+    triggerSpeech(
+      textInfo.spoken,
+      speechLocale,
+      `Speaking: “${symptom.name}” (${textInfo.label})`
+    );
 
-    // 2. Add symptom to shared patient record
     const updatedRecord = await addSymptom(symptom.name);
     setActiveSymptoms(updatedRecord.symptoms || []);
 
-    // 3. Run AI triage
     const triageResult = await triageSymptoms(updatedRecord.symptoms);
-
-    // 4. Update triage result in shared patient record
     await setTriageResult(triageResult);
     setUrgency(triageResult.urgency);
     setAiSummary(triageResult.aiSummary);
   };
 
-  // Handle quick communication phrase tap
   const handlePhraseClick = async (phrase) => {
     const speechLocale = currentLangObj.speechLocale || 'hi-IN';
-    speak(phrase.spoken, speechLocale);
-    setSpeakingText(`"${phrase.spoken}" (${phrase.label})`);
+    triggerSpeech(phrase.spoken, speechLocale, `Speaking: “${phrase.label}”`);
 
-    // Handle high priority assistance phrases
     if (phrase.id === 'washroom') {
-      await setQuickAlert('🚻 Washroom Urgency (Just now)');
-      setAlertNotification('🚻 Washroom assistance requested! Alert sent to caregiver.');
+      await setQuickAlert('Washroom Urgency (Just now)');
+      setAlertNotification('Washroom assistance requested. Alert sent to caregiver.');
     } else if (phrase.id === 'water') {
-      await setQuickAlert('💧 Drinking Water Requested (Just now)');
-      setAlertNotification('💧 Drinking water requested! Alert sent to caregiver.');
+      await setQuickAlert('Drinking Water Requested (Just now)');
+      setAlertNotification('Drinking water requested. Alert sent to caregiver.');
     } else if (phrase.id === 'sit_up') {
-      await setQuickAlert('🛏️ Mobility Support: Help Sit Up');
-      setAlertNotification('🛏️ Bed support requested! Alert sent to caregiver.');
+      await setQuickAlert('Mobility Support: Help Sit Up');
+      setAlertNotification('Bed support requested. Alert sent to caregiver.');
     } else if (phrase.id === 'cold') {
-      await setQuickAlert('🥶 Patient Feeling Cold (Blanket needed)');
-      setAlertNotification('🥶 Warm blanket requested! Alert sent to caregiver.');
+      await setQuickAlert('Patient Feeling Cold (Blanket needed)');
+      setAlertNotification('Warm blanket requested. Alert sent to caregiver.');
     } else if (phrase.id === 'food') {
-      await setQuickAlert('🍲 Patient Hungry (Meal assistance)');
-      setAlertNotification('🍲 Meal assistance requested! Alert sent to caregiver.');
+      await setQuickAlert('Patient Hungry (Meal assistance)');
+      setAlertNotification('Meal assistance requested. Alert sent to caregiver.');
     }
   };
 
-  // Handle emergency button click
   const handleEmergencyClick = async () => {
     setEmergencyActive(true);
     const emergencySpeech =
       langCode === 'hi'
         ? 'आपातकालीन सहायता की आवश्यकता है! तुरंत मदद करें!'
         : 'Emergency help requested! Please assist immediately!';
-    speak(emergencySpeech, currentLangObj.speechLocale || 'hi-IN');
+    triggerSpeech(
+      emergencySpeech,
+      currentLangObj.speechLocale || 'hi-IN',
+      'Speaking: “Emergency, I need help now” (आपातकालीन सहायता)'
+    );
 
     await triggerEmergency();
     setUrgency('High');
     setAiSummary('EMERGENCY ALERT: Immediate caregiver and doctor assistance requested.');
-    setSpeakingText('🚨 EMERGENCY BROADCAST DISPATCHED TO CAREGIVER');
   };
 
-  // Handle hand gesture recognized by MediaPipe webcam (Dev 1)
+  // Real-time MediaPipe hand gesture actions (Dev 1)
   const handleGestureDetected = async (gesture) => {
     const speechLocale = currentLangObj.speechLocale || 'hi-IN';
     const currentSymptom = symptomsData[highlightedIndex] || symptomsData[0];
@@ -221,17 +225,17 @@ export default function Patient() {
     if (gesture.action === 'hand_detected') {
       const targetText = getSymptomText(currentSymptom.id, langCode);
       setSpeakingText(
-        `🖐️ Hand detected · Highlighted: "${targetText.label}" (Show 👍 to confirm, ☝️/👎 for next)`
+        `Hand detected · Highlighted: “${targetText.label}” (Thumbs Up to confirm, Point/Down for next)`
       );
       setAlertNotification(
-        `🖐️ Hand detected! Show 👍 Thumbs Up to select "${currentSymptom.name}", or ☝️/👎 for next.`
+        `Hand detected! Show Thumbs Up to select “${currentSymptom.name}”, or Point/Thumbs Down for next.`
       );
       return;
     }
 
     if (gesture.action === 'confirm_symptom') {
       await handleSymptomClick(currentSymptom);
-      setAlertNotification(`👍 Confirmed symptom via gesture: ${currentSymptom.name}`);
+      setAlertNotification(`Confirmed symptom via gesture: ${currentSymptom.name}`);
       return;
     }
 
@@ -240,10 +244,14 @@ export default function Patient() {
       const nextSymptom = symptomsData[nextIndex];
       const nextText = getSymptomText(nextSymptom.id, langCode);
       setHighlightedIndex(nextIndex);
-      speak(nextText.label, speechLocale, { playChime: false });
-      setSpeakingText(`${gesture.emoji} Highlighted next symptom: "${nextText.label}" (${nextSymptom.name})`);
+      triggerSpeech(
+        nextText.label,
+        speechLocale,
+        `Highlighted next symptom: “${nextText.label}” (${nextSymptom.name})`,
+        { playChime: false }
+      );
       setAlertNotification(
-        `${gesture.emoji} ${gesture.name}: Moved highlight to "${nextSymptom.name}". Show 👍 to select.`
+        `${gesture.name}: Moved focus to “${nextSymptom.name}”. Show Thumbs Up to select.`
       );
       return;
     }
@@ -254,204 +262,211 @@ export default function Patient() {
     }
 
     if (gesture.action === 'doctor') {
-      speak(gesture.spoken, speechLocale);
-      setSpeakingText(`${gesture.emoji} [Gesture: ${gesture.name}] "${gesture.spoken}"`);
-      await setQuickAlert('✌️ Hand Gesture: Patient requested Doctor');
-      setAlertNotification('✌️ Hand gesture detected: Doctor consultation requested!');
+      triggerSpeech(gesture.spoken, speechLocale, `Gesture (${gesture.name}): “${gesture.spoken}”`);
+      await setQuickAlert('Hand Gesture: Patient requested Doctor');
+      setAlertNotification('Hand gesture detected: Doctor consultation requested.');
     }
   };
 
   return (
-    <div className="page-container figma-patient-page">
-      {/* Emergency Active Banner */}
-      {emergencyActive && (
-        <div className="figma-caregiver-alert-bar emergency-flashing" role="alert">
-          <div className="alert-bar-left">
-            <span className="alert-siren">🚨</span>
-            <span className="alert-text">
-              <strong>EMERGENCY HELP BROADCAST ACTIVE:</strong> Caregiver and medical team alerted!
-            </span>
-          </div>
-          <button
-            type="button"
-            className="btn-respond-now"
-            onClick={() => setEmergencyActive(false)}
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-
-      {/* Quick Assistance Alert Banner (e.g. Washroom Urgency / Water) */}
-      {alertNotification && (
-        <div className="figma-caregiver-alert-bar active washroom-notification-bar" role="alert">
-          <div className="alert-bar-left">
-            <span className="alert-siren">🚻</span>
-            <span className="alert-text">
-              <strong>{alertNotification}</strong>
-            </span>
-          </div>
-          <button
-            type="button"
-            className="btn-respond-now"
-            onClick={() => setAlertNotification(null)}
-          >
-            Dismiss ✕
-          </button>
-        </div>
-      )}
-
-      {/* Top Header: "Tap what you feel", Customizable Patient Details, Language Switcher */}
-      <div className="figma-patient-header">
-        <div className="patient-meta-container">
-          <h2 className="figma-section-title">{ui.tapWhatYouFeel}</h2>
-          <div className="figma-patient-meta-row">
-            <span className="patient-pill-badge">
-              👤 <strong>{patientRecord?.name || 'Patient'}, {patientRecord?.age || 62} yrs</strong> ({patientRecord?.gender || 'Male'})
-            </span>
-            <span className="patient-pill-room">
-              🏥 {patientRecord?.roomNo || 'Ward 4B · Bed 12'}
-            </span>
+    <>
+      {/* Sticky Sub-Header Strip (#strip) */}
+      <div className="sj-strip">
+        <div className="sin">
+          <span className="sin-who">
+            <Icon name="user" />
+            <b>
+              {patientRecord?.name || 'Ramesh Kumar'}, {patientRecord?.age || 62} yrs ({patientRecord?.gender || 'Male'})
+            </b>
+            <span className="sep">•</span>
+            <Icon name="bed" />
+            <span>{patientRecord?.roomNo || 'Ward 4B - Bed 12'}</span>
             <button
               type="button"
-              className="btn-edit-patient-profile"
+              className="link"
               onClick={handleOpenEditModal}
               title="Customize patient name, age, and info"
             >
-              ✏️ Edit Profile
+              Edit Profile
             </button>
-          </div>
-        </div>
+          </span>
 
-        {/* 28-Language Switcher Dropdown */}
-        <div className="patient-lang-switcher">
-          <span className="lang-switcher-icon">🌐</span>
-          <select
-            className="patient-lang-select"
-            value={langCode}
-            onChange={handleLanguageSelect}
-            aria-label="Change language (28 languages)"
-          >
-            {languages.map((l) => (
-              <option key={l.code} value={l.code}>
-                {l.nativeName} ({l.name})
-              </option>
-            ))}
-          </select>
+          <button type="button" className="sos" onClick={handleEmergencyClick}>
+            <Icon name="siren" />
+            Emergency Help <span className="hi">(आपातकालीन सहायता)</span>
+          </button>
         </div>
       </div>
 
-      {/* 4x2 Symptom Grid matching Figma */}
-      <div className="figma-symptoms-grid">
-        {symptomsData.map((symptom, index) => (
-          <SymptomButton
-            key={symptom.id}
-            symptom={symptom}
-            isSelected={activeSymptoms.includes(symptom.name)}
-            isHighlighted={index === highlightedIndex}
-            onClick={handleSymptomClick}
-            currentLangCode={langCode}
-          />
-        ))}
-      </div>
-
-      {/* Quick Patient Phrases Bar */}
-      <div className="figma-quick-phrases-card">
-        <span className="phrases-header-label">{ui.quickPhrases}:</span>
-        <div className="phrases-chips-list">
-          {quickPhrases.map((phrase) => (
+      {/* Main Two-Column Patient Workspace */}
+      <div className="page-wrap wide">
+        {emergencyActive && (
+          <div className="alert-banner emergency" role="alert">
+            <div className="alert-banner-left">
+              <Icon name="siren" />
+              <span>
+                <strong>EMERGENCY BROADCAST ACTIVE:</strong> Caregiver and medical team alerted.
+              </span>
+            </div>
             <button
-              key={phrase.id}
               type="button"
-              className="phrase-chip-btn"
-              onClick={() => handlePhraseClick(phrase)}
+              className="btn subtle sm"
+              onClick={() => setEmergencyActive(false)}
             >
-              {phrase.label}
+              Dismiss
             </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Speaking Bar matching Figma (Soft green banner) */}
-      <div className="figma-speaking-bar">
-        <span className="speaking-icon">🔊</span>
-        <span className="speaking-label">{ui.speakingLabel}</span>
-        <span className="speaking-quote">
-          {speakingText || (langCode === 'hi' ? '"सीने में दर्द" / "Chest pain"' : '"Chest pain"')}
-        </span>
-      </div>
-
-      {/* Full-Width Red EMERGENCY HELP Button matching Figma */}
-      <div className="figma-emergency-row">
-        <button
-          type="button"
-          className="btn-figma-emergency"
-          onClick={handleEmergencyClick}
-        >
-          <span className="emergency-icon-glow">🚨</span>
-          <span>{ui.emergencyHelp}</span>
-        </button>
-      </div>
-
-      {/* Bottom Split Layout matching Figma */}
-      <div className="figma-bottom-grid">
-        {/* Left: Triage Status Card */}
-        <div className="figma-triage-card">
-          <div className="figma-triage-header">
-            <span className="triage-title-small">{ui.aiUrgency}</span>
-            <UrgencyBadge urgency={urgency} />
           </div>
+        )}
 
-          <div className="figma-active-symptoms-chips">
-            {activeSymptoms.length > 0 ? (
-              activeSymptoms.map((s) => (
-                <span key={s} className="figma-symptom-tag">
-                  ● {s}
+        {alertNotification && (
+          <div className="alert-banner assist" role="alert">
+            <div className="alert-banner-left">
+              <Icon name="alert" />
+              <strong>{alertNotification}</strong>
+            </div>
+            <button
+              type="button"
+              className="btn subtle xs"
+              onClick={() => setAlertNotification(null)}
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        <div className="pgrid">
+          {/* Left Column: 2x4 Symptom Grid */}
+          <section>
+            <h2 className="sec">
+              Tap what you feel / <span className="hi">जो महसूस हो उसे छुएं</span>
+            </h2>
+            <div className="sym">
+              {symptomsData.map((symptom, index) => (
+                <SymptomButton
+                  key={symptom.id}
+                  symptom={symptom}
+                  isSelected={activeSymptoms.includes(symptom.name)}
+                  isHighlighted={index === highlightedIndex}
+                  onClick={handleSymptomClick}
+                  currentLangCode={langCode}
+                />
+              ))}
+            </div>
+          </section>
+
+          {/* Right Column: Phrases, Speech Feedback, AI Urgency, Camera */}
+          <section>
+            <h2 className="sec">Quick Patient Phrases</h2>
+            <div className="chips">
+              {quickPhrases.map((phrase) => (
+                <button
+                  key={phrase.id}
+                  type="button"
+                  className="chip"
+                  onClick={() => handlePhraseClick(phrase)}
+                >
+                  <span>{phrase.label}</span>
+                </button>
+              ))}
+            </div>
+
+            <h2 className="sec mt">Speech Feedback</h2>
+            <div className={`voice ${isSpeaking ? 'live' : ''}`} role="status" aria-live="polite">
+              <span className="vgrp">
+                <Icon name="speak" />
+                <span className="txt">
+                  {speakingText || 'Ready. Tap a symptom or phrase to speak.'}
                 </span>
-              ))
-            ) : (
-              <span className="empty-subtext">No symptoms tapped yet</span>
-            )}
-          </div>
+              </span>
+              <span className="vgrp">
+                <span className="wave" aria-hidden="true">
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                </span>
+                <button
+                  type="button"
+                  className="vb"
+                  onClick={handleReplaySpeech}
+                  aria-label="Replay"
+                  title="Replay last spoken phrase"
+                >
+                  <Icon name="replay" />
+                </button>
+                <button
+                  type="button"
+                  className="vb"
+                  onClick={handleStopSpeech}
+                  aria-label="Stop"
+                  title="Stop speech"
+                >
+                  <Icon name="stop" />
+                </button>
+              </span>
+            </div>
 
-          <p className="figma-triage-advice">
-            {aiSummary || 'Tap any symptom above to evaluate urgency and notify caregiver.'}
-          </p>
+            <h2 className="sec mt">AI Urgency &amp; Assistant</h2>
+            <div className="card flush">
+              <div className="pad">
+                <div className="sevhead">
+                  <span className="sevhead-label">AI URGENCY STATUS</span>
+                  <UrgencyBadge urgency={urgency} />
+                </div>
 
-          <WarningBox message="AI guidance only, consult a doctor." />
+                {activeSymptoms.length > 0 && (
+                  <div className="chips" style={{ marginTop: '10px' }}>
+                    {activeSymptoms.map((s) => (
+                      <span key={s} className="chip tag-active">
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <p style={{ margin: '10px 0 0', fontSize: '14px', color: 'var(--ink)' }}>
+                  {aiSummary || 'Patient is resting. No critical symptoms reported.'}
+                </p>
+              </div>
+              <WarningBox message="AI guidance only, consult a doctor." />
+            </div>
+
+            <h2 className="sec mt">Camera Integration</h2>
+            <WebcamGesture
+              onGestureDetected={handleGestureDetected}
+              highlightedSymptomName={symptomsData[highlightedIndex]?.name}
+            />
+          </section>
         </div>
-
-        {/* Right: MediaPipe Gesture Camera Component (Dev 1) */}
-        <WebcamGesture
-          onGestureDetected={handleGestureDetected}
-          highlightedSymptomName={symptomsData[highlightedIndex]?.name}
-        />
       </div>
 
       {/* Edit Patient Profile Modal */}
       {isEditProfileOpen && (
-        <div className="modal-overlay" role="dialog" aria-modal="true">
-          <div className="modal-dialog profile-modal-dialog">
-            <div className="modal-header">
-              <h3>✏️ Edit Patient Profile (रोगी विवरण संपादित करें)</h3>
+        <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Edit Patient Profile">
+          <div className="modal-card">
+            <div className="modal-head">
+              <h3>Edit Patient Profile</h3>
               <button
                 type="button"
-                className="btn-close-modal"
+                className="btn subtle xs"
                 onClick={() => setIsEditProfileOpen(false)}
                 aria-label="Close modal"
               >
-                ✕
+                <Icon name="x" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveProfile} className="profile-modal-form">
-              <div className="modal-form-grid">
+            <form onSubmit={handleSaveProfile}>
+              <div className="modal-grid">
                 <div className="field-group">
-                  <label htmlFor="modal-name">Patient Full Name:</label>
+                  <label htmlFor="modal-name">Patient Full Name</label>
                   <input
                     id="modal-name"
                     type="text"
-                    className="board-input"
+                    className="sj-input"
                     value={profileForm.name}
                     onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
                     placeholder="e.g. Ramesh Kumar"
@@ -460,13 +475,13 @@ export default function Patient() {
                 </div>
 
                 <div className="field-group">
-                  <label htmlFor="modal-age">Age (Years):</label>
+                  <label htmlFor="modal-age">Age (Years)</label>
                   <input
                     id="modal-age"
                     type="number"
                     min="1"
                     max="125"
-                    className="board-input"
+                    className="sj-input"
                     value={profileForm.age}
                     onChange={(e) => setProfileForm({ ...profileForm, age: e.target.value })}
                     required
@@ -474,26 +489,26 @@ export default function Patient() {
                 </div>
 
                 <div className="field-group">
-                  <label htmlFor="modal-gender">Gender:</label>
+                  <label htmlFor="modal-gender">Gender</label>
                   <select
                     id="modal-gender"
-                    className="board-select"
+                    className="sj-field-select"
                     value={profileForm.gender}
                     onChange={(e) => setProfileForm({ ...profileForm, gender: e.target.value })}
                   >
-                    <option value="Male">Male (पुरुष)</option>
-                    <option value="Female">Female (महिला)</option>
-                    <option value="Other">Other (अन्य)</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
                     <option value="Prefer not to say">Prefer not to say</option>
                   </select>
                 </div>
 
                 <div className="field-group">
-                  <label htmlFor="modal-room">Room / Bed No:</label>
+                  <label htmlFor="modal-room">Ward / Bed No</label>
                   <input
                     id="modal-room"
                     type="text"
-                    className="board-input"
+                    className="sj-input"
                     value={profileForm.roomNo}
                     onChange={(e) => setProfileForm({ ...profileForm, roomNo: e.target.value })}
                     placeholder="e.g. Ward 4B - Bed 12"
@@ -501,10 +516,10 @@ export default function Patient() {
                 </div>
 
                 <div className="field-group">
-                  <label htmlFor="modal-lang">Primary Language:</label>
+                  <label htmlFor="modal-lang">Primary Language</label>
                   <select
                     id="modal-lang"
-                    className="board-select"
+                    className="sj-field-select"
                     value={profileForm.language}
                     onChange={(e) => setProfileForm({ ...profileForm, language: e.target.value })}
                   >
@@ -517,11 +532,11 @@ export default function Patient() {
                 </div>
 
                 <div className="field-group">
-                  <label htmlFor="modal-contact">Emergency Contact Phone:</label>
+                  <label htmlFor="modal-contact">Emergency Contact</label>
                   <input
                     id="modal-contact"
                     type="tel"
-                    className="board-input"
+                    className="sj-input"
                     value={profileForm.emergencyContact}
                     onChange={(e) => setProfileForm({ ...profileForm, emergencyContact: e.target.value })}
                     placeholder="e.g. +91 98765 43210"
@@ -529,35 +544,36 @@ export default function Patient() {
                 </div>
               </div>
 
-              <div className="field-group" style={{ marginTop: '0.75rem' }}>
-                <label htmlFor="modal-living">Clinical / Living Condition Notes:</label>
+              <div className="field-group" style={{ marginTop: '12px' }}>
+                <label htmlFor="modal-living">Clinical / Living Notes</label>
                 <textarea
                   id="modal-living"
                   rows="2"
-                  className="board-input"
-                  style={{ resize: 'vertical' }}
+                  className="sj-textarea"
+                  style={{ minHeight: '72px' }}
                   value={profileForm.livingNote}
                   onChange={(e) => setProfileForm({ ...profileForm, livingNote: e.target.value })}
-                  placeholder="e.g. At home with family. Non-verbal, uses high-contrast buttons."
+                  placeholder="e.g. At home with family. Non-verbal communication."
                 />
               </div>
 
-              <div className="modal-actions-row">
-                <button type="submit" className="btn-modal-save">
-                  ✓ Save Patient Record
-                </button>
+              <div className="modal-actions">
                 <button
                   type="button"
-                  className="btn-modal-cancel"
+                  className="btn subtle sm"
                   onClick={() => setIsEditProfileOpen(false)}
                 >
                   Cancel
+                </button>
+                <button type="submit" className="btn sm">
+                  <Icon name="check" />
+                  Save Patient Record
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
