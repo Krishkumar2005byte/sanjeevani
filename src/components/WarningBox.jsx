@@ -1,22 +1,19 @@
 /**
- * WarningBox.jsx - AI Guidance & Medical Advisory Box
- * Owner: Shared Safety / Dev 2 (AI Triage)
- * 
- * Simple explanation:
- * Prominent yellow advisory reminder ensuring caregivers and patients remember
- * that AI outputs are supportive guidance and not a replacement for a doctor.
+ * WarningBox.jsx - Soft Amber AI Guidance Notice Strip
+ * Owner: Shared Safety / Dev 2 & Member 4
  */
 
 import React from 'react';
+import Icon from './Icons';
 
 export default function WarningBox({ message }) {
   return (
-    <div className="warning-box" role="alert">
-      <span className="warning-box-icon">⚠️</span>
-      <div className="warning-box-content">
+    <div className="notice" role="alert">
+      <Icon name="alert" />
+      <span>
         <strong>AI Guidance Notice:</strong>{' '}
-        {message || 'Sanjeevani triage is for preliminary support only. It does not replace professional medical evaluation. In an emergency, contact emergency medical services immediately.'}
-      </div>
+        {message || 'AI guidance only, consult a doctor.'}
+      </span>
     </div>
   );
 }

@@ -1,39 +1,36 @@
 /**
- * MedicineCard.jsx - Patient Medicine Item Card (Figma Design)
- * Owner: Dev 3 (Medicines & Interactions)
- * 
- * Matches Figma layout:
- * - Medicine name with dosage time
- * - Pill icon and status pill
- * - Green "Mark as Taken" button
+ * MedicineCard.jsx - Clean Editorial Medicine Card with Pastel Pill Badge
+ * Owner: Dev 3 & Member 4 (UI)
  */
 
 import React from 'react';
+import Icon from './Icons';
 
 export default function MedicineCard({ medicine, index, onMarkTaken }) {
   return (
-    <div className={`figma-medicine-card ${medicine.taken ? 'taken' : 'pending'}`}>
-      <div className="med-card-info">
-        <span className="med-card-icon">💊</span>
-        <div className="med-card-labels">
-          <span className="med-card-title">{medicine.name}</span>
-          <span className="med-card-timing">{medicine.time}</span>
-        </div>
+    <div className="card med-card">
+      <span className="badge b-amb">
+        <Icon name="pill" />
+      </span>
+      <div className="med-text">
+        <b>{medicine.name}</b>
+        <small>{medicine.time}</small>
       </div>
-
-      <div className="med-card-actions">
-        {medicine.taken ? (
-          <span className="status-taken-pill">✓ Taken</span>
-        ) : (
-          <button
-            type="button"
-            className="btn-mark-taken-green"
-            onClick={() => onMarkTaken(index)}
-          >
-            Mark as Taken
-          </button>
-        )}
-      </div>
+      {medicine.taken ? (
+        <span className="taken on" aria-pressed="true">
+          <Icon name="check" />
+          Taken
+        </span>
+      ) : (
+        <button
+          type="button"
+          className="taken"
+          aria-pressed="false"
+          onClick={() => onMarkTaken(index)}
+        >
+          Mark as taken
+        </button>
+      )}
     </div>
   );
 }

@@ -1,15 +1,6 @@
 /**
- * Doctors.jsx - Doctor Clinical Consultation Portal & Directory
- * Owner: Dev 2 (Doctor Clinical Workspace & Telemedicine)
- * 
- * Features:
- * 1. Doctor Clinical Workspace:
- *    - Active patient review (Ramesh, 62, symptoms, urgency, emergency state)
- *    - Live Teleconsultation Video Room & Call Controls
- *    - Digital Prescription Pad (Rx) with auto contraindication checking from 88+ drugs
- *    - Clinical Notes & Diagnostic Impressions editor (saved to patient record)
- *    - Patient medication adherence history
- * 2. Doctor Directory & 28-Language Roster tab
+ * Doctors.jsx - Editorial Consultation Room & 28-Language Doctor Directory
+ * Owner: Dev 2 & Member 4 (UI)
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -25,27 +16,24 @@ import {
 import { checkInteractions } from '../lib/interactions.js';
 import DoctorCard from '../components/DoctorCard.jsx';
 import UrgencyBadge from '../components/UrgencyBadge.jsx';
+import Icon from '../components/Icons.jsx';
 
 export default function Doctors() {
-  const [activeTab, setActiveTab] = useState('workspace'); // 'workspace' | 'directory'
+  const [activeTab, setActiveTab] = useState('workspace');
   const [patient, setPatient] = useState(null);
 
-  // Directory filters
   const [selectedLanguage, setSelectedLanguage] = useState('All');
   const [selectedSpecialty, setSelectedSpecialty] = useState('All');
   const [bookingLoading, setBookingLoading] = useState(false);
 
-  // Doctor Clinical Workspace Form States
   const [newMedName, setNewMedName] = useState('');
   const [newMedTime, setNewMedTime] = useState('Morning');
   const [newMedInstructions, setNewMedInstructions] = useState('');
   const [rxSuccessMsg, setRxSuccessMsg] = useState('');
 
-  // Doctor Clinical Notes State
   const [doctorNotesInput, setDoctorNotesInput] = useState('');
   const [notesSavedMsg, setNotesSavedMsg] = useState('');
 
-  // Teleconsultation Call Simulator State
   const [isCallActive, setIsCallActive] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
@@ -59,23 +47,18 @@ export default function Doctors() {
         initialized = true;
       }
     });
-
     return () => {
       if (unsub) unsub();
     };
   }, []);
 
-  // Live drug contraindication check derived dynamically as doctor types
   const rxWarning = useMemo(() => {
-    if (!newMedName.trim() || !patient?.medicines) {
-      return '';
-    }
+    if (!newMedName.trim() || !patient?.medicines) return '';
     const testList = [...(patient.medicines || []), { name: newMedName.trim() }];
     const warnings = checkInteractions(testList);
     return warnings.length > 0 ? warnings[0] : '';
   }, [newMedName, patient]);
 
-  // Handle Prescribing Medicine
   const handlePrescribeMedicine = async (e) => {
     e.preventDefault();
     if (!newMedName.trim()) return;
@@ -85,20 +68,18 @@ export default function Doctors() {
       time: newMedTime
     });
 
-    setRxSuccessMsg(`✓ Successfully prescribed ${newMedName.trim()} to ${patient?.name || 'patient'}'s active regimen.`);
+    setRxSuccessMsg(`Prescribed ${newMedName.trim()} to ${patient?.name || 'patient'}.`);
     setNewMedName('');
     setNewMedInstructions('');
     setTimeout(() => setRxSuccessMsg(''), 4000);
   };
 
-  // Handle Saving Doctor Notes
   const handleSaveNotes = async () => {
     await saveDoctorNotes(doctorNotesInput);
-    setNotesSavedMsg('✓ Clinical diagnosis and notes saved to patient record.');
-    setTimeout(() => setNotesSavedMsg(''), 3500);
+    setNotesSavedMsg('Saved');
+    setTimeout(() => setNotesSavedMsg(''), 3000);
   };
 
-  // Handle Directory Doctor Booking
   const handleBook = async (doctor) => {
     setBookingLoading(true);
     await bookAppointment(doctor);
@@ -107,7 +88,7 @@ export default function Doctors() {
 
   if (!patient) {
     return (
-      <div className="page-container">
+      <div className="page-wrap">
         <div className="loading-state">Connecting to clinical data stream...</div>
       </div>
     );
@@ -140,353 +121,287 @@ export default function Doctors() {
   });
 
   return (
-    <div className="page-container figma-doctors-page">
-      {/* Top Clinical Portal Header */}
-      <div className="doc-portal-header">
-        <div className="doc-portal-badge-row">
-          <div className="doc-doctor-badge">
-            <span className="doc-avatar-icon">👨‍⚕️</span>
-            <div>
-              <h2 className="doc-doctor-title">Doctor Consultation Portal</h2>
-              <span className="doc-doctor-meta">
-                Dr. Anjali Sharma, MD (Cardiologist) · Reg #MED-784920 · Sanjeevani Tele-Clinic
-              </span>
-            </div>
-          </div>
-          <div className="doc-status-pill">
-            <span className="status-indicator-dot">●</span> Online & Ready for Triage
-          </div>
+    <div className="page-wrap">
+      <div className="doc-header-bar">
+        <div>
+          <h1 className="page-h1">Consultation room</h1>
+          <p className="sub" style={{ marginBottom: 0 }}>
+            {patient.name}, {patient.age} yrs · {patient.roomNo || 'Ward 4B - Bed 12'} · Dr. Anjali Sharma, MD
+          </p>
         </div>
 
-        {/* Portal Mode Tabs: Clinical Workspace vs Directory */}
-        <div className="doc-tabs-bar">
+        <div className="seg" role="tablist" aria-label="Doctor portal view">
           <button
             type="button"
-            className={`doc-tab-btn ${activeTab === 'workspace' ? 'active' : ''}`}
+            role="tab"
+            aria-selected={activeTab === 'workspace'}
+            className={activeTab === 'workspace' ? 'on' : ''}
             onClick={() => setActiveTab('workspace')}
           >
-            🩺 Clinical Workspace (Active Patient: {patient.name})
+            Clinical Workspace
           </button>
           <button
             type="button"
-            className={`doc-tab-btn ${activeTab === 'directory' ? 'active' : ''}`}
+            role="tab"
+            aria-selected={activeTab === 'directory'}
+            className={activeTab === 'directory' ? 'on' : ''}
             onClick={() => setActiveTab('directory')}
           >
-            📋 Doctor Directory & 28-Language Roster
+            Doctor Directory
           </button>
         </div>
       </div>
 
-      {/* ====================================================================
-          TAB 1: DOCTOR CLINICAL WORKSPACE
-          ==================================================================== */}
       {activeTab === 'workspace' && (
-        <div className="doc-workspace-container">
-          {/* Emergency Alert Banner if Emergency triggered */}
+        <>
           {isEmergency && (
-            <div className="figma-caregiver-alert-bar emergency-flashing" role="alert">
-              <div className="alert-bar-left">
-                <span className="alert-siren">🚨</span>
-                <span className="alert-text">
-                  <strong>CRITICAL EMERGENCY:</strong> Patient {patient.name} pressed Emergency Help! Immediate clinical intervention required.
+            <div className="alert-banner emergency" role="alert">
+              <div className="alert-banner-left">
+                <Icon name="siren" />
+                <span>
+                  <strong>CRITICAL EMERGENCY:</strong> {patient.name} pressed Emergency Help.
                 </span>
               </div>
               <button
                 type="button"
-                className="btn-respond-now"
+                className="btn subtle sm"
                 onClick={() => setIsCallActive(true)}
               >
-                Join Emergency Call Now →
+                Join Emergency Call
               </button>
             </div>
           )}
 
-          {/* Patient Overview & Teleconsultation Call Card */}
-          <div className="doc-patient-summary-card">
-            <div className="doc-summary-header">
-              <div>
-                <span className="card-tiny-title">ACTIVE CONSULTATION CASE</span>
-                <h3 className="doc-patient-name">
-                  {patient.name}, {patient.age} yrs · Male
-                </h3>
-                <p className="doc-patient-lang">
-                  Primary Language: <strong>{patient.language}</strong> · Location: Home Care (ICU Step-down)
+          <div className="pgrid">
+            {/* Left Column: Video Consultation + Diagnosis Notes */}
+            <section>
+              <div className="card">
+                <div className="sevhead">
+                  <h2 className="sec" style={{ margin: 0 }}>Video consultation</h2>
+                  <UrgencyBadge urgency={patient.urgency} />
+                </div>
+
+                {!isCallActive ? (
+                  <div className="cam-box">
+                    <Icon name="steth" />
+                  </div>
+                ) : (
+                  <div className="cam-box live">
+                    <div className="video-feeds-pair">
+                      <div className="video-tile">
+                        <span className="badge b-sky">
+                          <Icon name="user" />
+                        </span>
+                        <strong>{patient.name}</strong>
+                        <small>{patient.language} · Live</small>
+                      </div>
+                      <div className="video-tile">
+                        <span className="badge b-sage">
+                          <Icon name="steth" />
+                        </span>
+                        <strong>Dr. Anjali Sharma</strong>
+                        <small>{isMuted ? 'Muted' : isCameraOff ? 'Camera off' : 'Connected'}</small>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="chips">
+                  {!isCallActive ? (
+                    <button type="button" className="btn sm" onClick={() => setIsCallActive(true)}>
+                      <Icon name="cam" />
+                      Start call
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        className="btn ghost sm"
+                        onClick={() => setIsMuted(!isMuted)}
+                      >
+                        <Icon name="mic" />
+                        {isMuted ? 'Unmute' : 'Mute'}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn ghost sm"
+                        onClick={() => setIsCameraOff(!isCameraOff)}
+                      >
+                        <Icon name="cam" />
+                        {isCameraOff ? 'Enable Camera' : 'Camera Off'}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn danger sm"
+                        onClick={() => setIsCallActive(false)}
+                      >
+                        End call
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                {symptoms.length > 0 && (
+                  <div className="chips" style={{ marginTop: '14px' }}>
+                    {symptoms.map((s, idx) => (
+                      <span key={idx} className="chip tag-active">
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <p className="note-row" style={{ marginBottom: 0 }}>
+                  <Icon name="info" />
+                  <span>
+                    AI Triage: {patient.aiSummary || 'Patient resting. No critical symptoms reported.'}
+                  </span>
                 </p>
               </div>
-              <div className="doc-urgency-box">
-                <span className="urgency-label-caption">Current Triage Urgency:</span>
-                <UrgencyBadge urgency={patient.urgency} />
-              </div>
-            </div>
 
-            {/* Reported Symptoms */}
-            <div className="doc-symptoms-review">
-              <strong className="review-label">Reported Symptoms:</strong>
-              <div className="symptoms-chips-row">
-                {symptoms.length > 0 ? (
-                  symptoms.map((s, idx) => (
-                    <span key={idx} className="figma-pill-chip">
-                      ● {s}
-                    </span>
-                  ))
-                ) : (
-                  <span className="empty-subtext">No symptoms currently reported</span>
-                )}
-              </div>
-            </div>
-
-            {/* AI Triage Summary */}
-            <div className="doc-ai-assessment-box">
-              <strong>AI Triage Assessment:</strong> "{patient.aiSummary || 'Patient resting. Vital stability maintained.'}"
-            </div>
-
-            {/* Teleconsultation Video Console */}
-            <div className="doc-video-console-card">
-              <div className="video-console-top">
-                <div className="video-status-text">
-                  <span className="video-camera-icon">📹</span>
-                  <div>
-                    <strong>Encrypted Teleconsultation Room</strong>
-                    <p className="room-link-text">
-                      Room URL: {appointment?.videoLink || `https://meet.sanjeevani.demo/consult-${(patient?.name || 'patient').toLowerCase().replace(/\s+/g, '-')}`}
-                    </p>
-                  </div>
-                </div>
-                {!isCallActive ? (
-                  <button
-                    type="button"
-                    className="btn-start-video-call"
-                    onClick={() => setIsCallActive(true)}
-                  >
-                    🎥 Start Video Consultation with {patient.name}
+              <div className="card mt">
+                <h2 className="sec">Diagnosis notes</h2>
+                <textarea
+                  className="sj-textarea"
+                  rows={5}
+                  aria-label="Diagnosis notes"
+                  placeholder="Findings, impression, care plan..."
+                  value={doctorNotesInput}
+                  onChange={(e) => setDoctorNotesInput(e.target.value)}
+                />
+                <div style={{ marginTop: '12px' }}>
+                  <button type="button" className="btn sm" onClick={handleSaveNotes}>
+                    <Icon name="check" />
+                    {notesSavedMsg || 'Save notes'}
                   </button>
-                ) : (
-                  <button
-                    type="button"
-                    className="btn-end-video-call"
-                    onClick={() => setIsCallActive(false)}
-                  >
-                    ⏹ End Consultation
-                  </button>
-                )}
-              </div>
-
-              {/* In-Call Video Meeting Simulation Screen */}
-              {isCallActive && (
-                <div className="video-call-screen-sim">
-                  <div className="video-feed-box patient-feed">
-                    <span className="feed-avatar">👴</span>
-                    <span className="feed-name-tag">Patient: {patient.name} ({patient.language})</span>
-                    <span className="feed-live-pill">● LIVE</span>
-                  </div>
-                  <div className="video-feed-box doctor-feed">
-                    <span className="feed-avatar">👩‍⚕️</span>
-                    <span className="feed-name-tag">Dr. Anjali Sharma (You)</span>
-                    {isMuted && <span className="feed-mute-pill">🔇 Muted</span>}
-                  </div>
-
-                  {/* Call Controls Bar */}
-                  <div className="video-controls-bar">
-                    <button
-                      type="button"
-                      className={`control-btn ${isMuted ? 'active-red' : ''}`}
-                      onClick={() => setIsMuted(!isMuted)}
-                    >
-                      {isMuted ? '🔇 Unmute' : '🎙️ Mute'}
-                    </button>
-                    <button
-                      type="button"
-                      className={`control-btn ${isCameraOff ? 'active-red' : ''}`}
-                      onClick={() => setIsCameraOff(!isCameraOff)}
-                    >
-                      {isCameraOff ? '📷 Enable Camera' : '🚫 Disable Camera'}
-                    </button>
-                    <button
-                      type="button"
-                      className="control-btn hangup-btn"
-                      onClick={() => setIsCallActive(false)}
-                    >
-                      📞 Leave Meeting
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Two-Column Clinical Tools: Rx Pad on Left, Notes & History on Right */}
-          <div className="doc-tools-grid">
-            {/* Column 1: Doctor's Digital Prescription Pad (Rx) */}
-            <div className="doc-rx-pad-card">
-              <div className="rx-card-header">
-                <span className="rx-icon">℞</span>
-                <div>
-                  <h4>Doctor's Digital Prescription Pad</h4>
-                  <p className="rx-sub">Prescribe medications with automated contraindication safety.</p>
                 </div>
               </div>
+            </section>
 
-              {rxSuccessMsg && <div className="rx-success-alert">{rxSuccessMsg}</div>}
+            {/* Right Column: Prescription Pad & Current Medications */}
+            <section>
+              <div className="card">
+                <h2 className="sec">Prescription pad</h2>
 
-              {/* Real-time Contraindication Warning */}
-              {rxWarning && (
-                <div className="rx-contraindication-alert" role="alert">
-                  <span className="contra-icon">🛑</span>
-                  <div>
-                    <strong>CONTRAINDICATION DETECTED:</strong>
-                    <p>{rxWarning}</p>
+                {rxSuccessMsg && <div className="rx-success">{rxSuccessMsg}</div>}
+
+                <form onSubmit={handlePrescribeMedicine}>
+                  <div className="add-row">
+                    <input
+                      type="text"
+                      list="doc-rx-med-list"
+                      placeholder="Drug name (e.g. Aspirin, Warfarin, Metoprolol)"
+                      aria-label="Drug name"
+                      value={newMedName}
+                      onChange={(e) => setNewMedName(e.target.value)}
+                      required
+                    />
+                    <datalist id="doc-rx-med-list">
+                      {commonMedicines.map((m) => (
+                        <option key={m} value={m} />
+                      ))}
+                    </datalist>
+                    <button type="submit" className="btn sm">
+                      Add
+                    </button>
                   </div>
-                </div>
-              )}
 
-              <form onSubmit={handlePrescribeMedicine} className="doc-rx-form">
-                <div className="doc-form-group">
-                  <label htmlFor="rx-med-name">Medicine Name (select from 88+ drugs):</label>
-                  <input
-                    id="rx-med-name"
-                    type="text"
-                    list="doc-rx-med-list"
-                    className="doc-input-text"
-                    placeholder="e.g. Aspirin, Warfarin, Metoprolol, Pantoprazole..."
-                    value={newMedName}
-                    onChange={(e) => setNewMedName(e.target.value)}
-                    required
-                  />
-                  <datalist id="doc-rx-med-list">
-                    {commonMedicines.map((m) => (
-                      <option key={m} value={m} />
-                    ))}
-                  </datalist>
-                </div>
-
-                <div className="doc-form-row">
-                  <div className="doc-form-group flex-1">
-                    <label htmlFor="rx-med-time">Timing:</label>
+                  <div className="modal-grid" style={{ marginTop: '10px' }}>
                     <select
-                      id="rx-med-time"
-                      className="doc-select"
+                      className="sj-field-select"
                       value={newMedTime}
                       onChange={(e) => setNewMedTime(e.target.value)}
+                      aria-label="Dosage timing"
                     >
-                      <option value="Morning">🌅 Morning (सुबह)</option>
-                      <option value="Afternoon">☀️ Afternoon (दोपहर)</option>
-                      <option value="Night">🌙 Night (रात)</option>
-                      <option value="Morning & Night">🌅+🌙 Twice Daily (1-0-1)</option>
+                      <option value="Morning">Morning</option>
+                      <option value="Afternoon">Afternoon</option>
+                      <option value="Night">Night</option>
+                      <option value="Morning & Night">Morning &amp; Night</option>
                     </select>
-                  </div>
-
-                  <div className="doc-form-group flex-2">
-                    <label htmlFor="rx-instructions">Clinical Instructions:</label>
                     <input
-                      id="rx-instructions"
                       type="text"
-                      className="doc-input-text"
-                      placeholder="e.g. 1 tablet after meals, 5 days"
+                      className="sj-input"
+                      placeholder="Instructions (e.g. after meals)"
                       value={newMedInstructions}
                       onChange={(e) => setNewMedInstructions(e.target.value)}
                     />
                   </div>
-                </div>
+                </form>
 
-                <button type="submit" className="btn-sign-prescription">
-                  ✓ Sign & Send Prescription to Caregiver
-                </button>
-              </form>
+                {rxWarning && (
+                  <div className="alert-card" role="alert">
+                    <span className="badge">
+                      <Icon name="alert" />
+                    </span>
+                    <div>
+                      <b>Possible interaction</b>
+                      <p>{rxWarning} Review before prescribing.</p>
+                    </div>
+                  </div>
+                )}
 
-              {/* Active Warnings Notice */}
-              {warnings.length > 0 && (
-                <div className="active-patient-warnings-box">
-                  <strong className="warn-title">⚠️ Patient's Current Regimen Conflicts:</strong>
-                  <ul className="conflict-list">
-                    {warnings.map((w, idx) => (
-                      <li key={idx}>{w}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
+                {warnings.length > 0 && !rxWarning && (
+                  <div className="alert-card" role="alert">
+                    <span className="badge">
+                      <Icon name="alert" />
+                    </span>
+                    <div>
+                      <b>Active regimen conflict</b>
+                      {warnings.map((w, idx) => (
+                        <p key={idx}>{w}</p>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-            {/* Column 2: Clinical Diagnosis Notes & Regimen Review */}
-            <div className="doc-notes-history-col">
-              {/* Doctor Notes Box */}
-              <div className="doc-clinical-notes-card">
-                <div className="notes-card-header">
-                  <h4>Clinical Diagnosis & Doctor's Notes</h4>
-                  {notesSavedMsg && <span className="notes-saved-pill">{notesSavedMsg}</span>}
-                </div>
-                <textarea
-                  className="doc-notes-textarea"
-                  rows={5}
-                  placeholder="Record diagnostic impressions, vitals observations, care advice, or referral notes for caregiver and patient..."
-                  value={doctorNotesInput}
-                  onChange={(e) => setDoctorNotesInput(e.target.value)}
-                />
-                <div className="notes-action-row">
-                  <button
-                    type="button"
-                    className="btn-save-notes"
-                    onClick={handleSaveNotes}
-                  >
-                    💾 Save Clinical Observations
-                  </button>
-                </div>
-              </div>
-
-              {/* Patient's Existing Medication Schedule */}
-              <div className="doc-patient-meds-card">
-                <div className="patient-meds-header">
-                  <h4>Current Patient Medications ({medicines.length})</h4>
-                  <span className="adherence-label">Adherence Review</span>
-                </div>
-                <div className="doc-meds-list">
+                <div style={{ marginTop: '16px' }}>
                   {medicines.length > 0 ? (
                     medicines.map((m, i) => (
-                      <div key={i} className="doc-med-item">
-                        <div className="med-info">
-                          <span className="med-dot">💊</span>
-                          <strong>{m.name}</strong>
-                          <span className="med-time-tag">({m.time})</span>
+                      <div key={i} className="logrow">
+                        <span className="badge b-amb">
+                          <Icon name="pill" />
+                        </span>
+                        <div className="log-main">
+                          <b>{m.name}</b>
+                          <small>{m.time}</small>
                         </div>
                         {m.taken ? (
-                          <span className="figma-status-taken">✓ Taken</span>
+                          <span className="taken on">
+                            <Icon name="check" />
+                            Taken
+                          </span>
                         ) : (
-                          <span className="figma-status-pending">Pending</span>
+                          <span className="taken pending">Pending</span>
                         )}
                       </div>
                     ))
                   ) : (
-                    <p className="empty-subtext">No medications currently scheduled.</p>
+                    <p className="empty-subtext">No drugs added yet.</p>
                   )}
                 </div>
+
+                <div className="note-row">
+                  <Icon name="info" />
+                  <span>Each drug is checked automatically against the patient’s current medicines.</span>
+                </div>
               </div>
-            </div>
+            </section>
           </div>
-        </div>
+        </>
       )}
 
-      {/* ====================================================================
-          TAB 2: DOCTOR DIRECTORY & 28-LANGUAGE ROSTER
-          ==================================================================== */}
       {activeTab === 'directory' && (
-        <div className="doc-directory-container">
-          <div className="figma-page-header">
-            <h3 className="figma-section-title">28-Language Doctor Directory</h3>
-            <p className="figma-page-sub">
-              Browse language-matched physicians and schedule consultations.
-            </p>
-          </div>
-
-          {/* Filter Dropdowns Bar matching Figma */}
-          <div className="figma-filters-bar">
-            <div className="figma-filter-item">
+        <div>
+          <div className="filter-bar">
+            <div className="filter-item">
               <label htmlFor="doc-filter-lang">Language:</label>
               <select
                 id="doc-filter-lang"
-                className="figma-select"
+                className="sj-select"
                 value={selectedLanguage}
                 onChange={(e) => setSelectedLanguage(e.target.value)}
               >
-                <option value="All">🌐 All Languages (28)</option>
+                <option value="All">All Languages (28)</option>
                 {languages.map((l) => (
                   <option key={l.code} value={l.name}>
                     {l.nativeName} ({l.name})
@@ -495,29 +410,28 @@ export default function Doctors() {
               </select>
             </div>
 
-            <div className="figma-filter-item">
+            <div className="filter-item">
               <label htmlFor="doc-filter-spec">Specialty:</label>
               <select
                 id="doc-filter-spec"
-                className="figma-select"
+                className="sj-select"
                 value={selectedSpecialty}
                 onChange={(e) => setSelectedSpecialty(e.target.value)}
               >
                 {specialties.map((s) => (
                   <option key={s} value={s}>
-                    {s === 'All' ? '🩺 All Specialties' : s}
+                    {s === 'All' ? 'All Specialties' : s}
                   </option>
                 ))}
               </select>
             </div>
 
-            <span className="figma-filter-count">
+            <span className="empty-subtext" style={{ marginLeft: 'auto' }}>
               Showing {filteredDoctors.length} doctors
             </span>
           </div>
 
-          {/* Doctor Cards Grid matching Figma */}
-          <div className="figma-doctors-grid">
+          <div className="doctors-grid">
             {filteredDoctors.length > 0 ? (
               filteredDoctors.map((doc) => (
                 <DoctorCard
@@ -529,10 +443,13 @@ export default function Doctors() {
                 />
               ))
             ) : (
-              <div className="figma-empty-card">
-                <p>No doctors found matching "{selectedLanguage}" in "{selectedSpecialty}".</p>
+              <div className="card" style={{ gridColumn: '1 / -1', textAlign: 'center' }}>
+                <p className="sub" style={{ marginBottom: '12px' }}>
+                  No doctors found matching “{selectedLanguage}” in “{selectedSpecialty}”.
+                </p>
                 <button
-                  className="btn-doc-book"
+                  type="button"
+                  className="btn sm"
                   onClick={() => {
                     setSelectedLanguage('All');
                     setSelectedSpecialty('All');

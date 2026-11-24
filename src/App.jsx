@@ -1,10 +1,6 @@
 /**
  * App.jsx - Main Application Routing & Layout
  * Owner: Shared Architecture (All Devs)
- * 
- * Simple explanation:
- * Sets up the browser routes connecting the Navbar, Login (Role Selection), Home,
- * Patient voiceboard, Caregiver live dashboard, Doctor portal, and Medicines tracker.
  */
 
 import React from 'react';
@@ -22,7 +18,7 @@ export default function App() {
     <BrowserRouter>
       <div className="app-layout">
         <Navbar />
-        <main>
+        <main className="app-main">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />

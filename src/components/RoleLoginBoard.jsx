@@ -1,11 +1,6 @@
 /**
- * RoleLoginBoard.jsx - Interactive Role Selection & Login Board
- * Owner: Shared Architecture (All Devs)
- * 
- * Replaces the static 3-card board with an active login system:
- * - Direct 1-click login for Patient (Ramesh), Caregiver (Aarav), or Doctor (Dr. Anjali)
- * - Optional custom name & 28-language selection
- * - Persistent session tracking via authService
+ * RoleLoginBoard.jsx - Editorial Role Selection & Login Card
+ * Owner: Shared Architecture & Member 4 (UI)
  */
 
 import React, { useState, useEffect } from 'react';
@@ -13,6 +8,34 @@ import { useNavigate } from 'react-router-dom';
 import { login, getCurrentUser, subscribeToAuth, DEMO_PROFILES } from '../lib/authService';
 import { updatePatientProfile } from '../lib/patientService';
 import languages from '../data/languages.json';
+import Icon from './Icons';
+
+const ROLE_CARDS = [
+  {
+    key: 'patient',
+    icon: 'user',
+    badgeClass: 'b-sky',
+    title: 'Patient',
+    hindi: 'मरीज़',
+    desc: 'Tap large symptom tiles with voice announcements and instant emergency alerts.'
+  },
+  {
+    key: 'caregiver',
+    icon: 'users',
+    badgeClass: 'b-rose',
+    title: 'Caregiver',
+    hindi: 'देखभालकर्ता',
+    desc: 'Live monitoring of patient symptoms, AI urgency status, and medication safety.'
+  },
+  {
+    key: 'doctor',
+    icon: 'steth',
+    badgeClass: 'b-sage',
+    title: 'Doctor',
+    hindi: 'चिकित्सक',
+    desc: 'Teleconsultation, digital prescriptions and clinical diagnosis notes.'
+  }
+];
 
 export default function RoleLoginBoard() {
   const navigate = useNavigate();
@@ -34,6 +57,7 @@ export default function RoleLoginBoard() {
   }, []);
 
   const activeDemo = DEMO_PROFILES[selectedRole] || DEMO_PROFILES.patient;
+  const activeRoleMeta = ROLE_CARDS.find((r) => r.key === selectedRole) || ROLE_CARDS[0];
 
   const handleQuickLogin = (roleKey) => {
     const profile = DEMO_PROFILES[roleKey];
@@ -69,122 +93,82 @@ export default function RoleLoginBoard() {
   };
 
   return (
-    <div className="role-login-board-card">
-      <div className="board-top-header">
-        <div>
-          <span className="board-tagline">PORTAL ACCESS · पोर्टल लॉगिन</span>
-          <h2 className="board-main-title">Select Your Role & Login</h2>
-          <p className="board-sub-desc">
-            Choose your role to enter your dedicated healthcare portal.
-          </p>
-        </div>
-
-        {/* Active Session Pill if already signed in */}
+    <div className="portal">
+      <div className="card">
         {currentUser && (
-          <div className="board-active-session-pill">
-            <span className="active-dot">●</span>
-            <span>Logged in as <strong>{currentUser.name}</strong> ({currentUser.badge || currentUser.role})</span>
-            <button
-              type="button"
-              className="btn-portal-direct"
-              onClick={() => navigate(currentUser.redirectPath || '/patient')}
-            >
-              Enter Portal →
-            </button>
+          <div className="status-pill">
+            <i aria-hidden="true" />
+            Signed in as {currentUser.name}
           </div>
         )}
-      </div>
 
-      {/* 3 Role Selection Tab Buttons */}
-      <div className="board-role-tabs">
-        <button
-          type="button"
-          className={`board-role-tab ${selectedRole === 'patient' ? 'active-patient' : ''}`}
-          onClick={() => setSelectedRole('patient')}
-        >
-          <span className="tab-avatar">👴</span>
-          <div className="tab-text">
-            <strong className="tab-role-name">I'm the Patient</strong>
-            <span className="tab-role-hindi">मरीज़ (Non-verbal Voiceboard)</span>
-          </div>
-        </button>
+        <h1 className="page-h1">Select your role</h1>
+        <p className="sub">Choose a role to enter your care portal.</p>
 
-        <button
-          type="button"
-          className={`board-role-tab ${selectedRole === 'caregiver' ? 'active-caregiver' : ''}`}
-          onClick={() => setSelectedRole('caregiver')}
-        >
-          <span className="tab-avatar">💛</span>
-          <div className="tab-text">
-            <strong className="tab-role-name">I'm the Caregiver</strong>
-            <span className="tab-role-hindi">देखभालकर्ता (Live Stream)</span>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          className={`board-role-tab ${selectedRole === 'doctor' ? 'active-doctor' : ''}`}
-          onClick={() => setSelectedRole('doctor')}
-        >
-          <span className="tab-avatar">👨‍⚕️</span>
-          <div className="tab-text">
-            <strong className="tab-role-name">I'm the Doctor</strong>
-            <span className="tab-role-hindi">चिकित्सक (Consultation & Rx)</span>
-          </div>
-        </button>
-      </div>
-
-      {/* Role Details & Login Action Box */}
-      <div className="board-role-detail-box">
-        <div className="role-detail-main">
-          <div className="detail-avatar-large">{activeDemo.avatar}</div>
-          <div className="detail-info-block">
-            <div className="detail-title-row">
-              <h3>{activeDemo.name}</h3>
-              <span className={`detail-role-badge badge-${selectedRole}`}>
-                {activeDemo.badge}
-              </span>
-            </div>
-            <p className="detail-subtitle">{activeDemo.subtitle}</p>
-            <p className="detail-description">
-              {selectedRole === 'patient' &&
-                'Designed for non-verbal patients. Tap large symptom cards with Delhi Metro announcer voice output and dispatch emergency alerts.'}
-              {selectedRole === 'caregiver' &&
-                'Real-time live monitoring feed of patient symptoms, AI clinical urgency rating, emergency alarms, and medication interaction warnings.'}
-              {selectedRole === 'doctor' &&
-                'Physician clinical consultation room. Includes teleconsultation video console, digital prescription pad (88+ drugs), and clinical diagnosis notes.'}
-            </p>
-          </div>
+        <div className="roles-grid" role="radiogroup" aria-label="Select portal role">
+          {ROLE_CARDS.map((r) => {
+            const isSelected = selectedRole === r.key;
+            return (
+              <button
+                key={r.key}
+                type="button"
+                role="radio"
+                aria-checked={isSelected}
+                className={`role-tile ${isSelected ? 'on' : ''}`}
+                onClick={() => setSelectedRole(r.key)}
+              >
+                <span className={`badge ${r.badgeClass}`}>
+                  <Icon name={r.icon} />
+                </span>
+                <div>
+                  <b>{r.title}</b>
+                  <span className="role-sub hi">{r.hindi}</span>
+                </div>
+              </button>
+            );
+          })}
         </div>
 
-        {/* 1-Click Fast Login Action */}
-        {!isCustomMode ? (
-          <div className="board-actions-row">
-            <button
-              type="button"
-              className={`btn-board-login btn-login-${selectedRole}`}
-              onClick={() => handleQuickLogin(selectedRole)}
-            >
-              ✓ Login as {activeDemo.name} ({activeDemo.badge}) →
-            </button>
-            <button
-              type="button"
-              className="btn-board-custom-toggle"
-              onClick={() => setIsCustomMode(true)}
-            >
-              Sign in with custom name or language
-            </button>
+        <div className="profile-row">
+          <span className={`badge ${activeRoleMeta.badgeClass}`}>
+            <Icon name={activeRoleMeta.icon} />
+          </span>
+          <div className="profile-text">
+            <h2>{activeDemo.name}</h2>
+            <p>{activeDemo.subtitle}</p>
+            <p>{activeRoleMeta.desc}</p>
           </div>
-        ) : (
-          /* Custom Name & Language Form */
-          <form onSubmit={handleCustomLogin} className="board-custom-form">
-            <div className="custom-fields-row">
+          {!isCustomMode && (
+            <div className="profile-actions">
+              <button
+                type="button"
+                className="btn"
+                onClick={() => handleQuickLogin(selectedRole)}
+              >
+                Enter Portal
+              </button>
+              <button
+                type="button"
+                className="link"
+                onClick={() => setIsCustomMode(true)}
+              >
+                Sign in with another account
+              </button>
+            </div>
+          )}
+        </div>
+
+        {isCustomMode && (
+          <form onSubmit={handleCustomLogin} className="custom-login-form">
+            <div className="form-grid-3">
               <div className="field-group">
-                <label htmlFor="custom-login-name">{selectedRole === 'patient' ? 'Patient Full Name:' : 'Your Name:'}</label>
+                <label htmlFor="custom-login-name">
+                  {selectedRole === 'patient' ? 'Patient Full Name' : 'Your Name'}
+                </label>
                 <input
                   id="custom-login-name"
                   type="text"
-                  className="board-input"
+                  className="sj-input"
                   placeholder={selectedRole === 'patient' ? 'e.g. Ramesh Kumar' : 'e.g. Rahul Verma'}
                   value={customName}
                   onChange={(e) => setCustomName(e.target.value)}
@@ -193,14 +177,14 @@ export default function RoleLoginBoard() {
               </div>
 
               {selectedRole === 'patient' && (
-                <div className="field-group" style={{ maxWidth: '120px' }}>
-                  <label htmlFor="custom-login-age">Age (Years):</label>
+                <div className="field-group">
+                  <label htmlFor="custom-login-age">Age</label>
                   <input
                     id="custom-login-age"
                     type="number"
                     min="1"
                     max="120"
-                    className="board-input"
+                    className="sj-input"
                     value={customAge}
                     onChange={(e) => setCustomAge(e.target.value)}
                   />
@@ -208,10 +192,10 @@ export default function RoleLoginBoard() {
               )}
 
               <div className="field-group">
-                <label htmlFor="custom-login-lang">Preferred Language (28 available):</label>
+                <label htmlFor="custom-login-lang">Language (28 available)</label>
                 <select
                   id="custom-login-lang"
-                  className="board-select"
+                  className="sj-field-select"
                   value={customLanguage}
                   onChange={(e) => setCustomLanguage(e.target.value)}
                 >
@@ -224,16 +208,13 @@ export default function RoleLoginBoard() {
               </div>
             </div>
 
-            <div className="custom-buttons-row">
-              <button
-                type="submit"
-                className={`btn-board-login btn-login-${selectedRole}`}
-              >
-                Start Session as {selectedRole.toUpperCase()} →
+            <div className="profile-actions">
+              <button type="submit" className="btn">
+                Start Session as {activeRoleMeta.title}
               </button>
               <button
                 type="button"
-                className="btn-cancel-custom"
+                className="btn subtle"
                 onClick={() => setIsCustomMode(false)}
               >
                 Cancel

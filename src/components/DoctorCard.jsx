@@ -1,54 +1,52 @@
 /**
- * DoctorCard.jsx - Doctor Directory & Booking Card (Figma Design)
- * Owner: Dev 2 (Doctor Matching)
- * 
- * Styled after Figma prototype:
- * - Avatar with initial badge
- * - Specialty tag, language chips, and available time
- * - Dark teal-green Book button with confirmed state
+ * DoctorCard.jsx - Editorial Doctor Directory Card
+ * Owner: Dev 2 & Member 4 (UI)
  */
 
 import React from 'react';
+import Icon from './Icons';
 
 export default function DoctorCard({ doctor, isBooked, onBook, bookingLoading }) {
   const initial = doctor.initial || doctor.name.replace('Dr. ', '')[0] || 'D';
 
   return (
-    <div className={`figma-doctor-card ${isBooked ? 'booked' : ''}`}>
-      <div className="doc-card-top">
-        <div className="doc-avatar-initial">{initial}</div>
-        <div className="doc-info-block">
-          <h4 className="doc-name">{doctor.name}</h4>
-          <span className="doc-specialty-tag">{doctor.specialty}</span>
+    <div className="card doc-card">
+      <div className="doc-card-head">
+        <span className="badge">{initial}</span>
+        <div>
+          <h4>{doctor.name}</h4>
+          <span>{doctor.specialty}</span>
         </div>
       </div>
 
-      <div className="doc-languages-row">
+      <div className="chips">
         {doctor.languages.map((lang) => (
-          <span key={lang} className="doc-lang-pill">
+          <span key={lang} className="chip tag-active">
             {lang}
           </span>
         ))}
       </div>
 
-      <div className="doc-time-row">
-        <span className="time-icon">🕒</span>
-        <span className="time-text">Available: {doctor.availableTime}</span>
+      <div className="doc-card-meta">
+        <Icon name="clock" />
+        <span>Available: {doctor.availableTime}</span>
       </div>
 
-      <div className="doc-card-action">
+      <div style={{ marginTop: 'auto', paddingTop: '4px' }}>
         {isBooked ? (
-          <div className="doc-booked-confirmed">
-            ✓ Confirmed
-          </div>
+          <span className="taken on">
+            <Icon name="check" />
+            Confirmed
+          </span>
         ) : (
           <button
             type="button"
-            className="btn-doc-book"
+            className="btn sm"
+            style={{ width: '100%' }}
             onClick={() => onBook(doctor)}
             disabled={bookingLoading}
           >
-            {bookingLoading ? 'Booking...' : 'Book'}
+            {bookingLoading ? 'Booking...' : 'Book Consultation'}
           </button>
         )}
       </div>
