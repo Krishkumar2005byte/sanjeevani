@@ -39,6 +39,7 @@ export default function Patient() {
   const [emergencyActive, setEmergencyActive] = useState(false);
   const [speakingText, setSpeakingText] = useState(null);
   const [alertNotification, setAlertNotification] = useState(null);
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [profileForm, setProfileForm] = useState({
     name: 'Ramesh Kumar',
@@ -147,6 +148,11 @@ export default function Patient() {
 
   // Handle symptom tap (speaks with default Delhi Metro announcer voice)
   const handleSymptomClick = async (symptom) => {
+    const clickedIdx = symptomsData.findIndex((s) => s.id === symptom.id);
+    if (clickedIdx !== -1) {
+      setHighlightedIndex(clickedIdx);
+    }
+
     const textInfo = getSymptomText(symptom.id, langCode);
     const speechLocale = currentLangObj.speechLocale || 'hi-IN';
 
@@ -210,24 +216,48 @@ export default function Patient() {
   // Handle hand gesture recognized by MediaPipe webcam (Dev 1)
   const handleGestureDetected = async (gesture) => {
     const speechLocale = currentLangObj.speechLocale || 'hi-IN';
-    speak(gesture.spoken, speechLocale);
-    setSpeakingText(`${gesture.emoji} [Gesture: ${gesture.name}] "${gesture.spoken}"`);
+    const currentSymptom = symptomsData[highlightedIndex] || symptomsData[0];
+
+    if (gesture.action === 'hand_detected') {
+      const targetText = getSymptomText(currentSymptom.id, langCode);
+      setSpeakingText(
+        `🖐️ Hand detected · Highlighted: "${targetText.label}" (Show 👍 to confirm, ☝️/👎 for next)`
+      );
+      setAlertNotification(
+        `🖐️ Hand detected! Show 👍 Thumbs Up to select "${currentSymptom.name}", or ☝️/👎 for next.`
+      );
+      return;
+    }
+
+    if (gesture.action === 'confirm_symptom') {
+      await handleSymptomClick(currentSymptom);
+      setAlertNotification(`👍 Confirmed symptom via gesture: ${currentSymptom.name}`);
+      return;
+    }
+
+    if (gesture.action === 'next_symptom') {
+      const nextIndex = (highlightedIndex + 1) % symptomsData.length;
+      const nextSymptom = symptomsData[nextIndex];
+      const nextText = getSymptomText(nextSymptom.id, langCode);
+      setHighlightedIndex(nextIndex);
+      speak(nextText.label, speechLocale, { playChime: false });
+      setSpeakingText(`${gesture.emoji} Highlighted next symptom: "${nextText.label}" (${nextSymptom.name})`);
+      setAlertNotification(
+        `${gesture.emoji} ${gesture.name}: Moved highlight to "${nextSymptom.name}". Show 👍 to select.`
+      );
+      return;
+    }
 
     if (gesture.action === 'emergency') {
       await handleEmergencyClick();
-    } else if (gesture.action === 'help') {
-      await setQuickAlert('🖐️ Hand Gesture: Patient requested Immediate Help');
-      setAlertNotification('🖐️ Hand gesture detected: Immediate help requested!');
-    } else if (gesture.action === 'water') {
-      await setQuickAlert('☝️ Hand Gesture: Patient requested Water / Washroom');
-      setAlertNotification('☝️ Hand gesture detected: Water / Washroom requested!');
-    } else if (gesture.action === 'doctor') {
+      return;
+    }
+
+    if (gesture.action === 'doctor') {
+      speak(gesture.spoken, speechLocale);
+      setSpeakingText(`${gesture.emoji} [Gesture: ${gesture.name}] "${gesture.spoken}"`);
       await setQuickAlert('✌️ Hand Gesture: Patient requested Doctor');
       setAlertNotification('✌️ Hand gesture detected: Doctor consultation requested!');
-    } else if (gesture.action === 'yes') {
-      setAlertNotification('👍 Patient indicated: Yes / I am okay.');
-    } else if (gesture.action === 'no') {
-      setAlertNotification('👎 Patient indicated: No / Need attention.');
     }
   };
 
@@ -313,11 +343,12 @@ export default function Patient() {
 
       {/* 4x2 Symptom Grid matching Figma */}
       <div className="figma-symptoms-grid">
-        {symptomsData.map((symptom) => (
+        {symptomsData.map((symptom, index) => (
           <SymptomButton
             key={symptom.id}
             symptom={symptom}
             isSelected={activeSymptoms.includes(symptom.name)}
+            isHighlighted={index === highlightedIndex}
             onClick={handleSymptomClick}
             currentLangCode={langCode}
           />
@@ -393,6 +424,7 @@ export default function Patient() {
         {/* Right: MediaPipe Gesture Camera Component (Dev 1) */}
         <WebcamGesture
           onGestureDetected={handleGestureDetected}
+          highlightedSymptomName={symptomsData[highlightedIndex]?.name}
         />
       </div>
 
