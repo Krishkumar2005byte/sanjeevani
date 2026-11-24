@@ -1,15 +1,13 @@
 /**
- * speech.js - Default Delhi Metro Announcer Voice Engine
- * Owner: Dev 1 (Patient Experience & Voice Output)
- * 
- * Default sound: Iconic Delhi Metro Announcer (Shammi Narang Baritone)
- * with the signature 2-tone melodic pre-announcement chime.
+ * speech.js - Multilingual Voice Announcement Engine
+ * Supports Hindi, English, Sindhi, Punjabi, Marathi, Maithili & all 28 Indic languages
+ * with automatic native voice resolution + Devanagari phonetic fallback for guaranteed voice output.
  */
 
 let audioCtx = null;
 
 /**
- * Plays the iconic Delhi Metro 2-tone melodic chime before the announcement.
+ * Plays the gentle 2-tone melodic pre-announcement chime.
  */
 export function playMetroChime() {
   try {
@@ -25,7 +23,6 @@ export function playMetroChime() {
 
     const now = audioCtx.currentTime;
 
-    // Tone 1: 587.33 Hz (D5)
     const osc1 = audioCtx.createOscillator();
     const gain1 = audioCtx.createGain();
     osc1.type = 'sine';
@@ -37,7 +34,6 @@ export function playMetroChime() {
     osc1.start(now);
     osc1.stop(now + 0.3);
 
-    // Tone 2: 880 Hz (A5) - High bell resonance
     const osc2 = audioCtx.createOscillator();
     const gain2 = audioCtx.createGain();
     osc2.type = 'sine';
@@ -58,84 +54,93 @@ export function playMetroChime() {
 }
 
 /**
- * Searches for a resonant masculine voice available in the browser.
+ * Resolves the best available browser TTS voice for a target locale.
+ * Priority:
+ * 1. Exact locale match (e.g. mr-IN, pa-IN, hi-IN, en-IN)
+ * 2. Same language prefix match (e.g. mr, pa, hi, en)
+ * 3. For Indic Devanagari languages (sd, mai, mr, pa phonetic fallback), falls back to hi-IN voice
+ * 4. First available system voice
  */
-function findBestVoice(langLocale = 'hi-IN') {
-  if (!('speechSynthesis' in window)) return null;
+function resolveVoiceAndText(text, langLocale = 'hi-IN', fallbackText = '') {
+  if (!('speechSynthesis' in window)) {
+    return { voice: null, lang: langLocale, spokenText: text };
+  }
 
-  const voices = window.speechSynthesis.getVoices();
-  if (!voices || voices.length === 0) return null;
-
+  const voices = window.speechSynthesis.getVoices() || [];
   const targetLang = (langLocale || 'hi-IN').toLowerCase();
   const targetPrefix = targetLang.split('-')[0];
 
-  const maleKeywords = ['ravi', 'hemant', 'david', 'mark', 'george', 'guy', 'male', 'pradeep', 'narang', 'shyam'];
+  // 1. Exact locale match
+  let voice = voices.find((v) => v.lang.toLowerCase() === targetLang);
 
-  // 1. Language match with male identifier
-  let voice = voices.find((v) => {
-    const name = v.name.toLowerCase();
-    const vLang = v.lang.toLowerCase();
-    const isLangMatch = vLang === targetLang || vLang.startsWith(targetPrefix);
-    const isMale = maleKeywords.some((k) => name.includes(k));
-    return isLangMatch && isMale;
-  });
-
-  // 2. Indian male voice
+  // 2. Language prefix match (e.g. en-US for en-IN, mr-IN for mr)
   if (!voice) {
-    voice = voices.find((v) => {
-      const name = v.name.toLowerCase();
-      const vLang = v.lang.toLowerCase();
-      const isIndian = vLang.includes('in') || name.includes('india');
-      const isMale = maleKeywords.some((k) => name.includes(k));
-      return isIndian && isMale;
-    });
+    voice = voices.find((v) => v.lang.toLowerCase().startsWith(`${targetPrefix}-`) || v.lang.toLowerCase() === targetPrefix);
   }
 
-  // 3. Fallback to any language match
-  if (!voice) {
-    voice = voices.find((v) => v.lang.toLowerCase().startsWith(targetPrefix));
+  if (voice) {
+    return { voice, lang: voice.lang || langLocale, spokenText: text };
   }
 
-  return voice || voices[0];
+  // 3. Indic Devanagari fallback: if native pa/sd/mai/mr voice pack isn't installed on OS,
+  // use hi-IN voice (and phonetic Devanagari fallbackText if provided, e.g. for Gurmukhi Punjabi)
+  const indicFallbackPrefixes = ['sd', 'mai', 'mr', 'pa', 'bho', 'doi', 'kok', 'ne', 'sa', 'mwr', 'bgc', 'hne', 'mag'];
+  if (indicFallbackPrefixes.includes(targetPrefix)) {
+    const hiVoice = voices.find((v) => v.lang.toLowerCase().startsWith('hi'));
+    return {
+      voice: hiVoice || voices[0] || null,
+      lang: hiVoice ? hiVoice.lang : 'hi-IN',
+      spokenText: fallbackText || text
+    };
+  }
+
+  // 4. Default fallback
+  return {
+    voice: voices[0] || null,
+    lang: langLocale,
+    spokenText: text
+  };
 }
 
 /**
- * Speaks text using the default Delhi Metro Announcer profile (Shammi Narang Baritone).
- * Automatically plays the signature metro pre-chime.
- * 
- * @param {string} text - Phrase to vocalize
- * @param {string} langLocale - Locale code (e.g. 'hi-IN', 'en-IN', 'ta-IN')
- * @param {object} options - Optional overrides
+ * Speaks text cleanly in the selected language.
+ * @param {string} text - Primary native text to speak
+ * @param {string} langLocale - BCP-47 locale (e.g. 'hi-IN', 'en-IN', 'sd-IN', 'pa-IN', 'mr-IN', 'mai-IN')
+ * @param {object} options - { playChime, fallbackText, pitch, rate, volume }
  */
 export async function speak(text, langLocale = 'hi-IN', options = {}) {
-  if (!('speechSynthesis' in window)) {
-    console.warn('[Speech] Browser does not support speechSynthesis API.');
+  if (!text || !('speechSynthesis' in window)) {
     return;
   }
 
-  const playChime = options.playChime !== false; // Default true
+  const playChime = options.playChime !== false;
 
-  // Cancel any ongoing utterance
   window.speechSynthesis.cancel();
 
-  // Play signature Delhi Metro melodic chime
   if (playChime) {
     await playMetroChime();
   }
 
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = langLocale;
+  const { voice, lang, spokenText } = resolveVoiceAndText(
+    text,
+    langLocale,
+    options.fallbackText
+  );
 
-  // Delhi Metro Announcer Acoustic Characteristics:
-  // Deep baritone resonance, measured formal cadence, maximum clarity
-  utterance.pitch = options.pitch ?? 0.82;
-  utterance.rate = options.rate ?? 0.85;
+  const utterance = new SpeechSynthesisUtterance(spokenText);
+  utterance.lang = lang;
+  utterance.pitch = options.pitch ?? 0.92;
+  utterance.rate = options.rate ?? 0.88;
   utterance.volume = options.volume ?? 1.0;
 
-  const selectedVoice = findBestVoice(langLocale);
-  if (selectedVoice) {
-    utterance.voice = selectedVoice;
+  if (voice) {
+    utterance.voice = voice;
   }
 
   window.speechSynthesis.speak(utterance);
+}
+
+// Pre-warm voices list in Chromium browsers
+if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+  window.speechSynthesis.getVoices();
 }

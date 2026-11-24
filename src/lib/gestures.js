@@ -1,76 +1,130 @@
 /**
- * gestures.js - MediaPipe Hand Gesture Recognition Logic
- * Owner: Dev 1 (Patient Experience & Accessibility)
- * 
- * Simple explanation:
- * Converts 21 3D hand landmarks from MediaPipe HandLandmarker into meaningful
- * non-verbal communication gestures for patients who cannot speak.
- * 
- * Supported Non-Verbal Gestures:
- * 1. Open Palm (🖐️)   -> Hand detected / Ready for gesture input
- * 2. Thumbs Up (👍)   -> Confirm / Select highlighted symptom
- * 3. Thumbs Down (👎) -> Skip / Move past highlighted symptom (never triggers Emergency)
- * 4. Pointing Up (☝️) -> Highlight next symptom
- * 5. Peace Sign (✌️)  -> Call Doctor
- * 6. Closed Fist (✊) -> Emergency Help / Severe Pain
+ * gestures.js - Real-Time MediaPipe 8-Gesture -> 8-Problem Mapping
+ * Owner: Dev 1 & Member 4 (UI / Gesture Set of 8)
+ *
+ * Each of the 8 camera-tracking patient hand gestures is assigned 1-to-1 to a specific problem:
+ * 1. Open Palm              -> Breathing Trouble (Red / High Alert)
+ * 2. Clenched Fist          -> Chest Pain (Red / High Alert)
+ * 3. Thumbs Up              -> High Fever (Orange / Medium Alert)
+ * 4. Thumbs Down            -> Dizziness (Orange / Medium Alert)
+ * 5. Index Finger Point     -> Headache (Orange / Medium Alert)
+ * 6. V-Sign (Victory/Peace) -> Nausea (Orange / Medium Alert)
+ * 7. “Okay” Sign (Ring)     -> Body Pain (Orange / Medium Alert)
+ * 8. Pinch Gesture          -> Need Water (Green / Low Routine)
  */
 
 export const GESTURE_DEFINITIONS = {
   open_palm: {
     id: 'open_palm',
+    number: 1,
     name: 'Open Palm',
+    shortName: '1. Open Palm',
     emoji: '🖐️',
-    label: 'Hand Detected · Ready',
-    spoken: '',
-    urgency: 'Low',
-    action: 'hand_detected'
-  },
-  thumbs_up: {
-    id: 'thumbs_up',
-    name: 'Thumbs Up',
-    emoji: '👍',
-    label: 'Confirm / Select Highlighted Symptom',
-    spoken: '',
-    urgency: 'Low',
-    action: 'confirm_symptom'
-  },
-  thumbs_down: {
-    id: 'thumbs_down',
-    name: 'Thumbs Down',
-    emoji: '👎',
-    label: 'Skip / Not This Symptom',
-    spoken: '',
-    urgency: 'Low',
-    action: 'next_symptom'
-  },
-  pointing_up: {
-    id: 'pointing_up',
-    name: 'Pointing Index',
-    emoji: '☝️',
-    label: 'Highlight Next Symptom',
-    spoken: '',
-    urgency: 'Low',
-    action: 'next_symptom'
-  },
-  peace_sign: {
-    id: 'peace_sign',
-    name: 'Peace Sign (V)',
-    emoji: '✌️',
-    label: 'Call Doctor',
-    spoken: 'कृपया डॉक्टर को बुलाएं',
-    urgency: 'Medium',
-    action: 'doctor'
+    symptomId: 'breathing-trouble',
+    problemName: 'Breathing Trouble',
+    label: 'Breathing Trouble · Red Alert',
+    spoken: 'सांस लेने में तकलीफ़ हो रही है',
+    urgency: 'High',
+    action: 'symptom'
   },
   fist: {
     id: 'fist',
-    name: 'Closed Fist',
+    number: 2,
+    name: 'Clenched Fist',
+    shortName: '2. Clenched Fist',
     emoji: '✊',
-    label: 'Emergency Help / Severe Pain',
-    spoken: 'आपातकालीन सहायता की आवश्यकता है! बहुत दर्द है!',
+    symptomId: 'chest-pain',
+    problemName: 'Chest Pain',
+    label: 'Chest Pain · Red Alert',
+    spoken: 'सीने में दर्द हो रहा है',
     urgency: 'High',
-    action: 'emergency'
+    action: 'symptom'
+  },
+  thumbs_up: {
+    id: 'thumbs_up',
+    number: 3,
+    name: 'Thumbs Up',
+    shortName: '3. Thumbs Up',
+    emoji: '👍',
+    symptomId: 'high-fever',
+    problemName: 'High Fever',
+    label: 'High Fever · Orange Alert',
+    spoken: 'मुझे तेज़ बुखार है',
+    urgency: 'Medium',
+    action: 'symptom'
+  },
+  thumbs_down: {
+    id: 'thumbs_down',
+    number: 4,
+    name: 'Thumbs Down',
+    shortName: '4. Thumbs Down',
+    emoji: '👎',
+    symptomId: 'dizziness',
+    problemName: 'Dizziness',
+    label: 'Dizziness · Orange Alert',
+    spoken: 'मुझे चक्कर आ रहे हैं',
+    urgency: 'Medium',
+    action: 'symptom'
+  },
+  pointing_up: {
+    id: 'pointing_up',
+    number: 5,
+    name: 'Index Finger Point',
+    shortName: '5. Index Point',
+    emoji: '☝️',
+    symptomId: 'headache',
+    problemName: 'Headache',
+    label: 'Headache · Orange Alert',
+    spoken: 'मुझे सिरदर्द हो रहा है',
+    urgency: 'Medium',
+    action: 'symptom'
+  },
+  peace_sign: {
+    id: 'peace_sign',
+    number: 6,
+    name: 'V-Sign (Peace)',
+    shortName: '6. V-Sign',
+    emoji: '✌️',
+    symptomId: 'nausea',
+    problemName: 'Nausea',
+    label: 'Nausea · Orange Alert',
+    spoken: 'मेरा जी मिचला रहा है',
+    urgency: 'Medium',
+    action: 'symptom'
+  },
+  ok_sign: {
+    id: 'ok_sign',
+    number: 7,
+    name: '“Okay” Sign (Ring)',
+    shortName: '7. Okay Sign',
+    emoji: '👌',
+    symptomId: 'body-pain',
+    problemName: 'Body Pain',
+    label: 'Body Pain · Orange Alert',
+    spoken: 'मुझे बदन दर्द हो रहा है',
+    urgency: 'Medium',
+    action: 'symptom'
+  },
+  pinch: {
+    id: 'pinch',
+    number: 8,
+    name: 'Pinch Gesture',
+    shortName: '8. Pinch',
+    emoji: '🤏',
+    symptomId: 'need-water',
+    problemName: 'Need Water',
+    label: 'Need Water · Routine',
+    spoken: 'मुझे पानी चाहिए',
+    urgency: 'Low',
+    action: 'symptom'
   }
 };
+
+export function getGestureForSymptom(symptomId) {
+  return (
+    Object.values(GESTURE_DEFINITIONS).find((g) => g.symptomId === symptomId) || null
+  );
+}
 
 function distance2D(a, b) {
   const dx = a.x - b.x;
@@ -79,16 +133,8 @@ function distance2D(a, b) {
 }
 
 /**
- * Classifies 21 MediaPipe hand landmarks into a recognized gesture.
- * Uses palm-size-normalized distances so detection works regardless of camera distance.
- *
- * Landmark Indices (MediaPipe standard):
- * 0: Wrist
- * 2: Thumb MCP, 3: Thumb IP, 4: Thumb tip
- * 5: Index MCP, 6: Index PIP, 8: Index tip
- * 9: Middle MCP, 10: Middle PIP, 12: Middle tip
- * 13: Ring MCP, 14: Ring PIP, 16: Ring tip
- * 17: Pinky MCP, 18: Pinky PIP, 20: Pinky tip
+ * Classifies 21 MediaPipe hand landmarks into one of the 8 supported patient gestures.
+ * Uses palm-size-normalized distances so detection works cleanly across camera distances.
  */
 export function classifyHandLandmarks(landmarks) {
   if (!landmarks || landmarks.length < 21) {
@@ -100,6 +146,8 @@ export function classifyHandLandmarks(landmarks) {
   const thumbIp = landmarks[3];
   const thumbTip = landmarks[4];
   const indexMcp = landmarks[5];
+  const indexPip = landmarks[6];
+  const indexTip = landmarks[8];
   const middleMcp = landmarks[9];
   const pinkyMcp = landmarks[17];
 
@@ -108,7 +156,6 @@ export function classifyHandLandmarks(landmarks) {
     return null;
   }
 
-  // A finger is extended when its tip is clearly farther from the wrist & MCP than its PIP joint
   const isFingerExtended = (mcpIdx, pipIdx, tipIdx) => {
     const tipToWrist = distance2D(landmarks[tipIdx], wrist);
     const pipToWrist = distance2D(landmarks[pipIdx], wrist);
@@ -117,7 +164,6 @@ export function classifyHandLandmarks(landmarks) {
     return tipToWrist > pipToWrist * 1.12 && tipToMcp > pipToMcp * 1.05;
   };
 
-  // A finger is curled when its tip sits close to the wrist/palm
   const isFingerCurled = (mcpIdx, pipIdx, tipIdx) => {
     const tipToWrist = distance2D(landmarks[tipIdx], wrist);
     const pipToWrist = distance2D(landmarks[pipIdx], wrist);
@@ -138,30 +184,53 @@ export function classifyHandLandmarks(landmarks) {
   const extendedCount = [indexExtended, middleExtended, ringExtended, pinkyExtended].filter(Boolean).length;
   const curledCount = [indexCurled, middleCurled, ringCurled, pinkyCurled].filter(Boolean).length;
 
-  const thumbOut = distance2D(thumbTip, pinkyMcp) > distance2D(thumbIp, pinkyMcp) * 1.08 &&
+  const thumbOut =
+    distance2D(thumbTip, pinkyMcp) > distance2D(thumbIp, pinkyMcp) * 1.08 &&
     distance2D(thumbTip, indexMcp) > palmSize * 0.42;
+
+  const thumbIndexDist = distance2D(thumbTip, indexTip);
+  const indexForwardFromPalm = distance2D(indexTip, wrist) > distance2D(indexPip, wrist) * 0.9;
+
+  // 7. "Okay" Sign (Ring Gesture): Thumb & Index tips form a ring, Middle + Ring + Pinky extended
+  if (
+    thumbIndexDist < palmSize * 0.38 &&
+    middleExtended &&
+    ringExtended &&
+    pinkyExtended
+  ) {
+    return GESTURE_DEFINITIONS.ok_sign;
+  }
+
+  // 8. Pinch Gesture (Thumb & Index): Thumb & Index tips close/pinched forward, other 3 fingers curled
+  if (
+    thumbIndexDist < palmSize * 0.36 &&
+    indexForwardFromPalm &&
+    middleCurled &&
+    ringCurled &&
+    pinkyCurled &&
+    distance2D(thumbTip, middleMcp) > palmSize * 0.52
+  ) {
+    return GESTURE_DEFINITIONS.pinch;
+  }
 
   // 1. Open Palm: all 4 fingers + thumb extended
   if (extendedCount === 4 && thumbOut) {
     return GESTURE_DEFINITIONS.open_palm;
   }
 
-  // 2. Thumbs Up vs Thumbs Down (checked BEFORE Closed Fist so thumbs down never triggers emergency)
+  // 3, 4, 2: Thumbs Up / Thumbs Down / Clenched Fist
   if (curledCount >= 3 && !indexExtended && !middleExtended && !ringExtended && !pinkyExtended) {
-    const thumbLift = thumbMcp.y - thumbTip.y; // positive = pointing UP, negative = pointing DOWN
+    const thumbLift = thumbMcp.y - thumbTip.y;
     const thumbAwayFromIndex = distance2D(thumbTip, indexMcp) > palmSize * 0.42;
 
-    // Thumbs Up: thumb tip clearly above thumb IP & MCP
     if (thumbAwayFromIndex && thumbTip.y < thumbIp.y && thumbLift > palmSize * 0.25) {
       return GESTURE_DEFINITIONS.thumbs_up;
     }
 
-    // Thumbs Down: thumb tip clearly below thumb IP & MCP
     if (thumbAwayFromIndex && thumbTip.y > thumbIp.y && -thumbLift > palmSize * 0.25) {
       return GESTURE_DEFINITIONS.thumbs_down;
     }
 
-    // 3. Closed Fist (Emergency): all 4 fingers curled AND thumb tucked close to palm/fingers
     const thumbTucked =
       curledCount === 4 &&
       Math.abs(thumbLift) < palmSize * 0.35 &&
@@ -172,12 +241,12 @@ export function classifyHandLandmarks(landmarks) {
     }
   }
 
-  // 4. Pointing Up: only index finger extended
+  // 5. Index Finger Point: only index finger extended
   if (indexExtended && !middleExtended && !ringExtended && !pinkyExtended) {
     return GESTURE_DEFINITIONS.pointing_up;
   }
 
-  // 5. Peace Sign: index & middle extended, ring & pinky curled
+  // 6. V-Sign (Victory/Peace): index & middle extended, ring & pinky curled
   if (indexExtended && middleExtended && !ringExtended && !pinkyExtended) {
     return GESTURE_DEFINITIONS.peace_sign;
   }

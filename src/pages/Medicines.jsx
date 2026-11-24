@@ -1,15 +1,20 @@
 /**
- * Medicines.jsx - Editorial Medicine Schedule & Drug Interaction Safety
+ * Medicines.jsx - Duplicate-Free Medicine Schedule with Adherence Progress,
+ * Live Pre-Add Interaction Preview, Filters & Safe Removal
  * Owner: Dev 3 & Member 4 (UI)
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import commonMedicines from '../data/medicines.json';
 import {
   subscribeToPatient,
   addMedicine,
-  markMedicineTaken
+  toggleMedicineTaken,
+  removeMedicine,
+  normalizeMedicineName
 } from '../lib/patientService.js';
+import { checkInteractions } from '../lib/interactions.js';
+import { getUiText, getLangCodeByName } from '../lib/translations.js';
 import MedicineCard from '../components/MedicineCard.jsx';
 import Icon from '../components/Icons.jsx';
 
@@ -17,16 +22,56 @@ export default function Medicines() {
   const [patient, setPatient] = useState(null);
   const [medicineName, setMedicineName] = useState('');
   const [selectedTimes, setSelectedTimes] = useState(['Morning']);
-  const [errorMsg, setErrorMsg] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'pending' | 'taken'
+  const [timeFilter, setTimeFilter] = useState('All'); // 'All' | 'Morning' | 'Afternoon' | 'Night'
+  const [feedback, setFeedback] = useState(null); // { type: 'error' | 'success', text: string }
+  const [langCode, setLangCode] = useState(() => localStorage.getItem('sanjeevani_lang_code') || 'hi');
 
   useEffect(() => {
     const unsub = subscribeToPatient((data) => {
       setPatient(data);
+      if (data?.language) setLangCode(getLangCodeByName(data.language));
     });
+    const handleLang = (e) => {
+      if (e.detail?.code) setLangCode(e.detail.code);
+    };
+    window.addEventListener('sanjeevani_lang_changed', handleLang);
     return () => {
       if (unsub) unsub();
+      window.removeEventListener('sanjeevani_lang_changed', handleLang);
     };
   }, []);
+
+  const ui = getUiText(langCode);
+
+  const medicines = useMemo(() => patient?.medicines || [], [patient]);
+  const warnings = useMemo(() => patient?.warnings || [], [patient]);
+
+  // Live duplicate check while typing
+  const duplicateMatch = useMemo(() => {
+    const norm = normalizeMedicineName(medicineName);
+    if (!norm) return null;
+    return medicines.find((m) => normalizeMedicineName(m.name) === norm) || null;
+  }, [medicineName, medicines]);
+
+  // Live pre-add drug interaction preview before submitting
+  const preAddConflicts = useMemo(() => {
+    const trimmed = medicineName.trim();
+    if (!trimmed || duplicateMatch) return [];
+    const currentSet = new Set(warnings);
+    const simulated = checkInteractions([...medicines, { name: trimmed }]);
+    return simulated.filter((w) => !currentSet.has(w));
+  }, [medicineName, medicines, warnings, duplicateMatch]);
+
+  // Determine which existing medicine names are involved in active warnings
+  const conflictingDrugNames = useMemo(() => {
+    const lowerWarnings = warnings.map((w) => w.toLowerCase());
+    return new Set(
+      medicines
+        .map((m) => normalizeMedicineName(m.name))
+        .filter((norm) => norm && lowerWarnings.some((w) => w.includes(norm)))
+    );
+  }, [medicines, warnings]);
 
   const toggleTime = (time) => {
     setSelectedTimes((prev) => {
@@ -37,22 +82,52 @@ export default function Medicines() {
 
   const handleAddMedicine = async (e) => {
     e.preventDefault();
-    if (!medicineName.trim()) {
-      setErrorMsg('Please enter a medicine name.');
+    const cleaned = medicineName.trim();
+    if (!cleaned) {
+      setFeedback({ type: 'error', text: 'Please enter a medicine name.' });
       return;
     }
 
-    setErrorMsg('');
-    await addMedicine({
-      name: medicineName.trim(),
+    if (duplicateMatch) {
+      setFeedback({
+        type: 'error',
+        text: `“${duplicateMatch.name}” is already in the schedule (${duplicateMatch.time}). Duplicate entries are not allowed.`
+      });
+      return;
+    }
+
+    const result = await addMedicine({
+      name: cleaned,
       time: selectedTimes.join(' & ')
     });
 
+    if (result?.duplicate) {
+      setFeedback({
+        type: 'error',
+        text: `“${result.existingMedicine?.name || cleaned}” is already scheduled. Duplicate entries are not allowed.`
+      });
+      return;
+    }
+
     setMedicineName('');
+    setFeedback({
+      type: 'success',
+      text: `Added ${cleaned} (${selectedTimes.join(' & ')}) to the daily schedule.`
+    });
+    setTimeout(() => setFeedback(null), 3500);
   };
 
-  const handleMarkTaken = async (index) => {
-    await markMedicineTaken(index);
+  const handleToggleTaken = async (index) => {
+    await toggleMedicineTaken(index);
+  };
+
+  const handleRemove = async (index) => {
+    const target = medicines[index];
+    await removeMedicine(index);
+    if (target) {
+      setFeedback({ type: 'success', text: `Removed ${target.name} from the schedule.` });
+      setTimeout(() => setFeedback(null), 3000);
+    }
   };
 
   if (!patient) {
@@ -63,23 +138,81 @@ export default function Medicines() {
     );
   }
 
-  const medicines = patient.medicines || [];
-  const warnings = patient.warnings || [];
+  const totalCount = medicines.length;
+  const takenCount = medicines.filter((m) => m.taken).length;
+  const pendingCount = totalCount - takenCount;
+  const adherencePct = totalCount > 0 ? Math.round((takenCount / totalCount) * 100) : 0;
+
+  const filteredMedicines = medicines
+    .map((med, originalIndex) => ({ med, originalIndex }))
+    .filter(({ med }) => {
+      if (statusFilter === 'taken' && !med.taken) return false;
+      if (statusFilter === 'pending' && med.taken) return false;
+      if (timeFilter !== 'All' && !(med.time || '').toLowerCase().includes(timeFilter.toLowerCase())) {
+        return false;
+      }
+      return true;
+    });
 
   return (
     <div className="page-wrap">
-      <h1 className="page-h1">Medicines</h1>
-      <p className="sub">Daily schedule with automatic safety checks.</p>
+      <div className="doc-header-bar">
+        <div>
+          <h1 className="page-h1 hi">{ui.medicinesTitle}</h1>
+          <p className="sub hi" style={{ marginBottom: 0 }}>
+            {ui.medicinesSub}
+          </p>
+        </div>
+        <span className={`sev ${warnings.length > 0 ? 'high' : 'low'}`}>
+          <i aria-hidden="true" />
+          {warnings.length > 0
+            ? `${warnings.length} SAFETY ALERT${warnings.length > 1 ? 'S' : ''}`
+            : 'NO CONFLICTS'}
+        </span>
+      </div>
 
-      <div className="card">
+      {/* Adherence Overview Bar */}
+      <div className="med-stats-grid">
+        <div className="card med-progress-card">
+          <div className="sevhead">
+            <span className="sevhead-label">TODAY&apos;S ADHERENCE</span>
+            <strong style={{ fontSize: '15px', color: 'var(--brand)' }}>
+              {takenCount} of {totalCount} taken ({adherencePct}%)
+            </strong>
+          </div>
+          <div className="progress-track" aria-label={`Medication adherence ${adherencePct}%`}>
+            <div className="progress-fill" style={{ width: `${adherencePct}%` }} />
+          </div>
+        </div>
+
+        <div className="card med-stat-mini">
+          <span className="sevhead-label">PENDING</span>
+          <strong className="stat-num" style={{ color: pendingCount > 0 ? 'var(--amb-ink)' : 'var(--ok)' }}>
+            {pendingCount}
+          </strong>
+        </div>
+
+        <div className="card med-stat-mini">
+          <span className="sevhead-label">COMPLETED</span>
+          <strong className="stat-num" style={{ color: 'var(--ok)' }}>
+            {takenCount}
+          </strong>
+        </div>
+      </div>
+
+      {/* Add Medicine Card with Duplicate Protection & Live Interaction Preview */}
+      <div className="card mt">
         <form onSubmit={handleAddMedicine} className="add-row">
           <input
             type="text"
             list="figma-med-list"
-            placeholder="Medicine name, e.g. Aspirin, Warfarin"
+            placeholder="Add medicine, e.g. Aspirin, Warfarin, Paracetamol"
             aria-label="Medicine name"
             value={medicineName}
-            onChange={(e) => setMedicineName(e.target.value)}
+            onChange={(e) => {
+              setMedicineName(e.target.value);
+              if (feedback) setFeedback(null);
+            }}
           />
           <datalist id="figma-med-list">
             {commonMedicines.map((m) => (
@@ -101,25 +234,53 @@ export default function Medicines() {
             ))}
           </div>
 
-          <button type="submit" className="btn">
-            Add
+          <button type="submit" className="btn hi" disabled={Boolean(duplicateMatch)}>
+            {ui.addMedicine}
           </button>
         </form>
 
-        {errorMsg && (
-          <p style={{ margin: '10px 0 0', fontSize: '13px', color: 'var(--red-pill-ink)' }}>
-            {errorMsg}
-          </p>
+        {/* Live Duplicate Warning */}
+        {duplicateMatch && (
+          <div className="inline-notice warn" role="alert">
+            <Icon name="alert" />
+            <span>
+              <strong>Already scheduled:</strong> {duplicateMatch.name} ({duplicateMatch.time}) is already on the list. Duplicate entries are blocked.
+            </span>
+          </div>
+        )}
+
+        {/* Live Pre-Add Contraindication Warning */}
+        {preAddConflicts.length > 0 && (
+          <div className="alert-card" role="alert" style={{ marginTop: '12px' }}>
+            <span className="badge">
+              <Icon name="alert" />
+            </span>
+            <div>
+              <b>Interaction warning before adding “{medicineName.trim()}”</b>
+              {preAddConflicts.map((w, idx) => (
+                <p key={idx}>{w}</p>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Submission Feedback */}
+        {feedback && !duplicateMatch && (
+          <div className={`inline-notice ${feedback.type === 'error' ? 'warn' : 'ok'}`} role="status">
+            <Icon name={feedback.type === 'error' ? 'alert' : 'check'} />
+            <span>{feedback.text}</span>
+          </div>
         )}
       </div>
 
+      {/* Active Drug Interaction Alert */}
       {warnings.length > 0 && (
         <div className="alert-card" role="alert">
           <span className="badge">
             <Icon name="alert" />
           </span>
           <div>
-            <b>Possible drug interaction</b>
+            <b>Active drug interaction detected</b>
             {warnings.map((w, idx) => (
               <p key={idx}>{w}</p>
             ))}
@@ -127,20 +288,59 @@ export default function Medicines() {
         </div>
       )}
 
+      {/* Filter Bar */}
+      <div className="med-filter-bar mt">
+        <div className="seg" role="group" aria-label="Filter by status">
+          {[
+            { id: 'all', label: `All (${totalCount})` },
+            { id: 'pending', label: `Pending (${pendingCount})` },
+            { id: 'taken', label: `Taken (${takenCount})` }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              className={statusFilter === tab.id ? 'on' : ''}
+              onClick={() => setStatusFilter(tab.id)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="chips">
+          {['All', 'Morning', 'Afternoon', 'Night'].map((slot) => (
+            <button
+              key={slot}
+              type="button"
+              className={`chip ${timeFilter === slot ? 'tag-active' : ''}`}
+              onClick={() => setTimeFilter(slot)}
+            >
+              {slot === 'All' ? 'All times' : slot}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Medicines Grid */}
       <div className="meds-grid">
-        {medicines.length > 0 ? (
-          medicines.map((med, index) => (
+        {filteredMedicines.length > 0 ? (
+          filteredMedicines.map(({ med, originalIndex }) => (
             <MedicineCard
-              key={index}
+              key={`${normalizeMedicineName(med.name)}-${originalIndex}`}
               medicine={med}
-              index={index}
-              onMarkTaken={handleMarkTaken}
+              index={originalIndex}
+              hasConflict={conflictingDrugNames.has(normalizeMedicineName(med.name))}
+              langCode={langCode}
+              onToggleTaken={handleToggleTaken}
+              onRemove={handleRemove}
             />
           ))
         ) : (
           <div className="card" style={{ gridColumn: '1 / -1', textAlign: 'center' }}>
             <p className="empty-subtext" style={{ margin: 0 }}>
-              No medicines logged yet. Add one above.
+              {totalCount === 0
+                ? 'No medicines logged yet. Add one above.'
+                : 'No medicines match the selected filter.'}
             </p>
           </div>
         )}

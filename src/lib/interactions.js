@@ -76,7 +76,7 @@ export const DANGEROUS_PAIRS = [
 export function checkInteractions(medicines = []) {
   const names = medicines
     .map((m) => (typeof m === 'string' ? m : m?.name || ''))
-    .map((name) => name.trim().toLowerCase())
+    .map((name) => name.replace(/\s*\([^)]*\)\s*/g, ' ').trim().toLowerCase())
     .filter(Boolean);
 
   const activeWarnings = [];
@@ -85,11 +85,11 @@ export function checkInteractions(medicines = []) {
     const drugA = pair.drugs[0].toLowerCase();
     const drugB = pair.drugs[1].toLowerCase();
 
-    const hasDrugA = names.includes(drugA);
-    const hasDrugB = names.includes(drugB);
+    const hasDrugA = names.some((n) => n === drugA || n.includes(drugA));
+    const hasDrugB = names.some((n) => n === drugB || n.includes(drugB));
 
     if (hasDrugA && hasDrugB) {
-      activeWarnings.push(`⚠️ DANGEROUS COMBINATION: ${pair.drugs[0]} + ${pair.drugs[1]} — ${pair.reason}`);
+      activeWarnings.push(`DANGEROUS COMBINATION: ${pair.drugs[0]} + ${pair.drugs[1]} — ${pair.reason}`);
     }
   }
 

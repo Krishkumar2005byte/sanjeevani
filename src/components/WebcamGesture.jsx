@@ -11,6 +11,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
 import { GESTURE_DEFINITIONS, classifyHandLandmarks } from '../lib/gestures.js';
+import { getUiText, getSymptomText } from '../lib/translations.js';
 import Icon from './Icons.jsx';
 
 const LOCAL_WASM_PATH = '/mediapipe/wasm';
@@ -23,7 +24,12 @@ const COOLDOWN_MS = 2500;
 const NORMAL_HOLD_FRAMES = 6;
 const EMERGENCY_HOLD_FRAMES = 12;
 
-export default function WebcamGesture({ onGestureDetected, highlightedSymptomName }) {
+export default function WebcamGesture({
+  onGestureDetected,
+  highlightedSymptomName,
+  activeSymptoms = [],
+  langCode = 'hi'
+}) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
@@ -459,6 +465,7 @@ export default function WebcamGesture({ onGestureDetected, highlightedSymptomNam
   };
 
   const liveStatus = getLiveStatus();
+  const ui = getUiText(langCode);
 
   return (
     <div
@@ -472,7 +479,7 @@ export default function WebcamGesture({ onGestureDetected, highlightedSymptomNam
       <div className="split">
         <div className="l">
           <div>
-            <h3>MediaPipe Hand Gesture Camera</h3>
+            <h3 className="hi">{ui.gestureCardTitle}</h3>
             <p
               style={{ margin: '6px 0 0', fontSize: '12px', color: handDetected ? 'var(--ok)' : 'var(--mute)', fontWeight: 500 }}
               role="status"
@@ -502,15 +509,15 @@ export default function WebcamGesture({ onGestureDetected, highlightedSymptomNam
 
           <button
             type="button"
-            className={`obtn ${isCameraActive ? 'active' : ''}`}
+            className={`obtn hi ${isCameraActive ? 'active' : ''}`}
             onClick={isCameraActive ? stopCamera : startCamera}
             disabled={isCameraLoading}
           >
             {isCameraLoading
               ? 'Starting...'
               : isCameraActive
-                ? 'Stop Camera'
-                : 'Start Camera'}
+                ? ui.stopCamera
+                : ui.startCamera}
           </button>
         </div>
 
@@ -551,24 +558,45 @@ export default function WebcamGesture({ onGestureDetected, highlightedSymptomNam
       </div>
 
       <div className="gesture-bar">
-        <span className="gesture-bar-label">Supported Hand Gestures (Live Camera or Quick Tap)</span>
-        <div className="chips">
-          {Object.values(GESTURE_DEFINITIONS).map((g) => (
-            <button
-              key={g.id}
-              type="button"
-              className={`chip ${detectedGesture?.id === g.id ? 'tag-active' : ''}`}
-              onClick={() => triggerGesture(g, 100)}
-              title={g.label}
-            >
-              <span>{g.name}</span>
-            </button>
-          ))}
+        <span className="gesture-bar-label hi">{ui.gestureGuideTitle}</span>
+        <div className="gesture-set-grid">
+          {Object.values(GESTURE_DEFINITIONS)
+            .sort((a, b) => (a.number || 0) - (b.number || 0))
+            .map((g) => {
+              const tier = (g.urgency || 'Low').toLowerCase();
+              const isProblemSelected = activeSymptoms.includes(g.problemName);
+              const localizedProblem = getSymptomText(g.symptomId, langCode).label;
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  className={`gesture-item-btn tier-${tier} ${
+                    detectedGesture?.id === g.id || isProblemSelected ? 'active' : ''
+                  }`}
+                  onClick={() => triggerGesture(g, 100)}
+                  title={`${g.number}. ${g.name} → ${g.problemName} (${localizedProblem})`}
+                >
+                  <span className="gesture-item-head">
+                    <span className={`gesture-tier-dot dot-${tier}`} aria-hidden="true" />
+                    <strong>
+                      {g.number}. {g.name}
+                    </strong>
+                    {isProblemSelected && <span className="gesture-active-tag">Selected</span>}
+                  </span>
+                  <small className="gesture-problem-line hi">
+                    → <b>{langCode === 'en' ? g.problemName : localizedProblem}</b>
+                    {langCode !== 'en' && localizedProblem !== g.problemName ? ` (${g.problemName})` : ''}
+                  </small>
+                </button>
+              );
+            })}
         </div>
 
         {detectedGesture && (
-          <div className="gesture-detected-strip">
-            {detectedGesture.name}: {detectedGesture.label} ({confidence}%{inCooldown ? ' · Cooldown' : ''})
+          <div className="gesture-detected-strip hi">
+            {detectedGesture.number}. {detectedGesture.name} →{' '}
+            {getSymptomText(detectedGesture.symptomId, langCode).label} ({confidence}%
+            {inCooldown ? ' · Cooldown' : ''})
           </div>
         )}
       </div>

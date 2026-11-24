@@ -1,19 +1,18 @@
 /**
- * WarningBox.jsx - Soft Amber AI Guidance Notice Strip
+ * WarningBox.jsx - Multilingual Soft Amber AI Guidance Notice Strip
  * Owner: Shared Safety / Dev 2 & Member 4
  */
 
 import React from 'react';
+import { getUiText } from '../lib/translations';
 import Icon from './Icons';
 
-export default function WarningBox({ message }) {
+export default function WarningBox({ message, langCode = 'en' }) {
+  const ui = getUiText(langCode);
   return (
-    <div className="notice" role="alert">
+    <div className="notice hi" role="alert">
       <Icon name="alert" />
-      <span>
-        <strong>AI Guidance Notice:</strong>{' '}
-        {message || 'AI guidance only, consult a doctor.'}
-      </span>
+      <span>{message || ui.aiGuidanceNotice}</span>
     </div>
   );
 }

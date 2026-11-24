@@ -5,7 +5,7 @@
       "name": "Hindi",
       "nativeName": "हिंदी",
       "script": "Devanagari",
-      "region": "North/Central India",
+      "region": "North & Central India",
       "speechLocale": "hi-IN"
     },
     "symptoms": [
@@ -15,7 +15,7 @@
         "icon": "💔",
         "urgency": "High",
         "label": "सीने में दर्द",
-        "spoken": "मेरे सीने में दर्द है"
+        "spoken": "मेरे सीने में दर्द हो रहा है"
       },
       {
         "id": "high-fever",
@@ -30,8 +30,8 @@
         "name": "Breathing Trouble",
         "icon": "🫁",
         "urgency": "High",
-        "label": "सांस में तकलीफ",
-        "spoken": "मुझे सांस लेने में तकलीफ हो रही है"
+        "label": "सांस लेने में तकलीफ़",
+        "spoken": "मुझे सांस लेने में तकलीफ़ हो रही है"
       },
       {
         "id": "need-water",
@@ -39,7 +39,7 @@
         "icon": "💧",
         "urgency": "Low",
         "label": "पानी चाहिए",
-        "spoken": "मुझे पानी चाहिए"
+        "spoken": "मुझे पीने के लिए पानी चाहिए"
       },
       {
         "id": "headache",
@@ -47,7 +47,7 @@
         "icon": "🤕",
         "urgency": "Medium",
         "label": "सिरदर्द",
-        "spoken": "मेरे सिर में दर्द है"
+        "spoken": "मेरे सिर में दर्द हो रहा है"
       },
       {
         "id": "nausea",
@@ -87,72 +87,95 @@
       },
       {
         "id": "washroom",
-        "label": "🚻 वॉशरूम जाना है (Washroom)",
+        "label": "वॉशरूम जाना है",
         "spoken": "मुझे तुरंत वॉशरूम जाना है"
       },
       {
         "id": "water",
-        "label": "💧 पानी चाहिए (Water)",
+        "label": "पानी चाहिए",
         "spoken": "मुझे पीने के लिए पानी चाहिए"
       },
       {
         "id": "sit_up",
-        "label": "🛏️ सहारा चाहिए (Sit Up)",
-        "spoken": "मुझे बैठने के लिए सहारा दीजिए"
+        "label": "बैठने में सहारा",
+        "spoken": "कृपया मुझे बैठने के लिए सहारा दीजिए"
       },
       {
         "id": "cold",
-        "label": "🥶 ठंड लग रही है (Cold)",
-        "spoken": "मुझे ठंड लग रही है, कंबल दीजिए"
+        "label": "ठंड लग रही है",
+        "spoken": "मुझे ठंड लग रही है, कृपया कंबल दीजिए"
       },
       {
         "id": "pain",
-        "label": "दर्द हो रहा है (In Pain)",
+        "label": "दर्द हो रहा है",
         "spoken": "मुझे बहुत दर्द हो रहा है"
       },
       {
         "id": "call_doc",
-        "label": "डॉक्टर बुलाओ (Doctor)",
+        "label": "डॉक्टर बुलाओ",
         "spoken": "कृपया डॉक्टर को बुलाएं"
       },
       {
         "id": "help",
-        "label": "मदद चाहिए (Help Me)",
+        "label": "मदद चाहिए",
         "spoken": "कृपया मेरी मदद करें"
       },
       {
         "id": "family",
-        "label": "परिवार को बुलाओ (Family)",
-        "spoken": "मेरे परिवार को बुला दीजिए"
+        "label": "परिवार को बुलाओ",
+        "spoken": "कृपया मेरे परिवार को बुला दीजिए"
       }
     ],
     "ui": {
-      "heroTitle": "बोल न सकने वाले मरीजों की आवाज़",
-      "heroSub": "लक्षण छुएं। देखभालकर्ता तुरंत देखेगा... सही डॉक्टर जुड़ेगा। दवाएं सुरक्षित रहेंगी।",
-      "patientRole": "मैं मरीज़ हूँ",
-      "patientSub": "अपने लक्षण छुएं और देखभालकर्ता को सूचित करें",
-      "caregiverRole": "मैं देखभालकर्ता हूँ",
-      "caregiverSub": "लक्षण, तात्कालिकता और दवाओं का लाइव विवरण",
-      "doctorRole": "मैं डॉक्टर हूँ",
-      "doctorSub": "मरीज़ का विवरण देखें और परामर्श शुरू करें",
-      "tapWhatYouFeel": "बताएं आपको क्या महसूस हो रहा है",
-      "emergencyHelp": "आपातकालीन मदद (EMERGENCY HELP)",
-      "speakingLabel": "आवाज़ में बोल रहे हैं:",
-      "aiUrgency": "एआई तात्कालिकता",
+      "tagline": "बोल न सकने वाले मरीज़ों की आवाज़",
+      "navHome": "होम",
+      "navPatient": "मरीज़",
+      "navCaregiver": "देखभालकर्ता",
+      "navDoctor": "चिकित्सक",
+      "navMedicines": "दवाइयाँ",
+      "switchRole": "भूमिका बदलें",
+      "selectRoleBtn": "भूमिका चुनें",
+      "reset": "रीसेट",
+      "editProfile": "प्रोफ़ाइल संपादित करें",
+      "selectRoleTitle": "अपनी भूमिका चुनें",
+      "selectRoleSub": "अपने केयर पोर्टल में प्रवेश करने के लिए भूमिका चुनें।",
+      "patientLabel": "मरीज़",
+      "caregiverLabel": "देखभालकर्ता",
+      "doctorLabel": "चिकित्सक",
+      "enterPortal": "पोर्टल खोलें",
+      "signInAnother": "दूसरे खाते से साइन इन करें",
+      "heroTitle": "बोल न सकने वाले मरीज़ों की आवाज़",
+      "heroSub": "लक्षण छुएं। देखभालकर्ता तुरंत देखेगा और सही डॉक्टर जुड़ेगा।",
+      "tapWhatYouFeel": "जो महसूस हो उसे छुएं",
+      "clearAll": "सभी हटाएं",
+      "quickPhrases": "त्वरित मरीज़ संवाद",
+      "speechFeedback": "आवाज़ प्रतिक्रिया",
+      "speechReady": "तैयार। बोलने के लिए कोई लक्षण या वाक्य छुएं।",
+      "speakingLabel": "बोल रहा है:",
+      "emergencyHelp": "आपातकालीन सहायता",
+      "emergencySpoken": "आपातकालीन सहायता की आवश्यकता है! कृपया तुरंत मदद करें!",
+      "aiUrgency": "एआई तात्कालिकता व सहायक",
+      "aiUrgencyStatus": "एआई तात्कालिकता स्थिति",
+      "aiGuidanceNotice": "केवल एआई मार्गदर्शन है, डॉक्टर से सलाह लें।",
+      "cameraIntegration": "कैमरा एकीकरण (8 हाथ के इशारे)",
+      "gestureCardTitle": "मीडियापाइप हाथ इशारा कैमरा",
+      "gestureGuideTitle": "इशारे-से-समस्या सूची (8 इशारे · कैमरा या टैप करें)",
+      "startCamera": "कैमरा शुरू करें",
+      "stopCamera": "कैमरा बंद करें",
+      "urgencyLow": "कम तात्कालिकता",
+      "urgencyMedium": "मध्यम तात्कालिकता",
+      "urgencyHigh": "उच्च तात्कालिकता",
+      "caregiverLiveTitle": "देखभालकर्ता लाइव दृश्य",
       "reportedSymptoms": "दर्ज लक्षण",
-      "currentMedicines": "वर्तमान दवाएं",
-      "findDoctor": "डॉक्टर खोजें",
-      "dangerousCombination": "खतरनाक दवा संयोजन",
-      "bookDoctorMatch": "भाषा-अनुकूल डॉक्टर बुक करें →",
-      "gestureCardTitle": "मीडियापाइप जेस्चर नियंत्रण (वैकल्पिक)",
-      "gestureCardDesc": "कैमरे के सामने हाथ के इशारे या सिर हिलाकर लक्षण चुनें।",
-      "quickPhrases": "त्वरित संवाद (Quick Phrases)",
-      "filterLanguage": "भाषा:",
-      "filterSpecialty": "विशेषज्ञता:",
-      "markAsTaken": "दवा ले ली (Mark as Taken)",
-      "taken": "ले ली (Taken)",
-      "pending": "बाकी है (Pending)",
-      "addMedicine": "दवा जोड़ें"
+      "currentMedicines": "वर्तमान दवाइयाँ",
+      "bookDoctorMatch": "हिंदी बोलने वाले डॉक्टर बुक करें",
+      "medicinesTitle": "दवाइयाँ",
+      "medicinesSub": "दैनिक दवा समय-सारणी और स्वचालित सुरक्षा जांच।",
+      "addMedicine": "जोड़ें",
+      "markAsTaken": "ली गई चिह्नित करें",
+      "taken": "ले ली गई",
+      "pending": "बाकी",
+      "doctorRoomTitle": "परामर्श कक्ष"
     }
   },
   "en": {
@@ -162,7 +185,7 @@
       "nativeName": "English",
       "script": "Latin",
       "region": "Pan-India & Global",
-      "speechLocale": "en-US"
+      "speechLocale": "en-IN"
     },
     "symptoms": [
       {
@@ -195,7 +218,7 @@
         "icon": "💧",
         "urgency": "Low",
         "label": "Need Water",
-        "spoken": "I need water please"
+        "spoken": "I need drinking water please"
       },
       {
         "id": "headache",
@@ -243,28 +266,28 @@
       },
       {
         "id": "washroom",
-        "label": "🚻 Washroom Urgency",
+        "label": "Washroom Urgency",
         "spoken": "I urgently need to use the washroom"
       },
       {
         "id": "water",
-        "label": "💧 Need Water",
+        "label": "Need Water",
         "spoken": "Please give me drinking water"
       },
       {
         "id": "sit_up",
-        "label": "🛏️ Help Sit Up",
+        "label": "Help Sit Up",
         "spoken": "Please help me sit up in bed"
       },
       {
         "id": "cold",
-        "label": "🥶 Feeling Cold",
+        "label": "Feeling Cold",
         "spoken": "I am feeling cold, please give me a blanket"
       },
       {
         "id": "pain",
         "label": "In Pain",
-        "spoken": "I am in severe pain"
+        "spoken": "I am in pain"
       },
       {
         "id": "call_doc",
@@ -283,32 +306,55 @@
       }
     ],
     "ui": {
-      "heroTitle": "A voice for patients who can't speak",
-      "heroSub": "Tap a symptom. Your caregiver sees it... the right doctor responds. Your medicines stay safe.",
-      "patientRole": "I'm the Patient",
-      "patientSub": "Tap what you feel and alert your care team",
-      "caregiverRole": "I'm the Caregiver",
-      "caregiverSub": "Live feed with symptoms, urgency, and medicines",
-      "doctorRole": "I'm the Doctor",
-      "doctorSub": "Review patient history and start video consultation",
+      "tagline": "A voice for patients who cannot speak",
+      "navHome": "Home",
+      "navPatient": "Patient",
+      "navCaregiver": "Caregiver",
+      "navDoctor": "Doctor",
+      "navMedicines": "Medicines",
+      "switchRole": "Switch Role",
+      "selectRoleBtn": "Select Role",
+      "reset": "Reset",
+      "editProfile": "Edit Profile",
+      "selectRoleTitle": "Select your role",
+      "selectRoleSub": "Choose a role to enter your care portal.",
+      "patientLabel": "Patient",
+      "caregiverLabel": "Caregiver",
+      "doctorLabel": "Doctor",
+      "enterPortal": "Enter Portal",
+      "signInAnother": "Sign in with another account",
+      "heroTitle": "A voice for patients who cannot speak",
+      "heroSub": "Tap a symptom. Your caregiver sees it live and connects you to the right doctor.",
       "tapWhatYouFeel": "Tap what you feel",
-      "emergencyHelp": "EMERGENCY HELP",
+      "clearAll": "Clear all",
+      "quickPhrases": "Quick Patient Phrases",
+      "speechFeedback": "Speech Feedback",
+      "speechReady": "Ready. Tap a symptom or phrase to speak.",
       "speakingLabel": "Speaking:",
-      "aiUrgency": "AI URGENCY",
+      "emergencyHelp": "Emergency Help",
+      "emergencySpoken": "Emergency help requested! Please assist immediately!",
+      "aiUrgency": "AI Urgency & Assistant",
+      "aiUrgencyStatus": "AI URGENCY STATUS",
+      "aiGuidanceNotice": "AI guidance only, consult a doctor.",
+      "cameraIntegration": "Camera Integration (8 Hand Gestures)",
+      "gestureCardTitle": "MediaPipe Hand Gesture Camera",
+      "gestureGuideTitle": "Gesture-to-Problem Guide (Set of 8 · Show on Camera or Tap to Toggle)",
+      "startCamera": "Start Camera",
+      "stopCamera": "Stop Camera",
+      "urgencyLow": "LOW URGENCY",
+      "urgencyMedium": "MODERATE URGENCY",
+      "urgencyHigh": "HIGH URGENCY",
+      "caregiverLiveTitle": "Caregiver live view",
       "reportedSymptoms": "Reported symptoms",
       "currentMedicines": "Current medicines",
-      "findDoctor": "Find a doctor",
-      "dangerousCombination": "Dangerous combination",
-      "bookDoctorMatch": "Book a language-matched doctor →",
-      "gestureCardTitle": "MediaPipe gesture (optional)",
-      "gestureCardDesc": "Point your hand or nod at the camera to select symptoms automatically.",
-      "quickPhrases": "Quick Patient Phrases",
-      "filterLanguage": "Language:",
-      "filterSpecialty": "Specialty:",
-      "markAsTaken": "Mark as Taken",
+      "bookDoctorMatch": "Book an English-speaking doctor",
+      "medicinesTitle": "Medicines",
+      "medicinesSub": "Daily medication schedule with duplicate protection & live interaction safety.",
+      "addMedicine": "Add",
+      "markAsTaken": "Mark as taken",
       "taken": "Taken",
       "pending": "Pending",
-      "addMedicine": "Add Medicine"
+      "doctorRoomTitle": "Consultation room"
     }
   },
   "ta": {
@@ -663,7 +709,7 @@
         "icon": "💧",
         "urgency": "Low",
         "label": "पाणी हवे",
-        "spoken": "मला पाणी हवे आहे"
+        "spoken": "मला पिण्यासाठी पाणी हवे आहे"
       },
       {
         "id": "headache",
@@ -679,7 +725,7 @@
         "icon": "🤢",
         "urgency": "Medium",
         "label": "मळमळ",
-        "spoken": "मला मळमळत आहे आणि उलट्यांसारखे वाटते"
+        "spoken": "मला मळमळत आहे"
       },
       {
         "id": "dizziness",
@@ -711,72 +757,95 @@
       },
       {
         "id": "washroom",
-        "label": "🚻 वॉशरूम जाना है (Washroom)",
-        "spoken": "मुझे तुरंत वॉशरूम जाना है"
+        "label": "स्वच्छतागृहात जायचे आहे",
+        "spoken": "मला लगेच स्वच्छतागृहात जायचे आहे"
       },
       {
         "id": "water",
-        "label": "💧 पानी चाहिए (Water)",
-        "spoken": "मुझे पीने के लिए पानी चाहिए"
+        "label": "पाणी हवे",
+        "spoken": "मला पिण्यासाठी पाणी हवे आहे"
       },
       {
         "id": "sit_up",
-        "label": "🛏️ सहारा चाहिए (Sit Up)",
-        "spoken": "मुझे बैठने के लिए सहारा दीजिए"
+        "label": "बसण्यासाठी आधार",
+        "spoken": "कृपया मला बसण्यासाठी आधार द्या"
       },
       {
         "id": "cold",
-        "label": "🥶 ठंड लग रही है (Cold)",
-        "spoken": "मुझे ठंड लग रही है, कंबल दीजिए"
+        "label": "थंडी वाजत आहे",
+        "spoken": "मला थंडी वाजत आहे, कृपया पांघरूण द्या"
       },
       {
         "id": "pain",
-        "label": "खूप दुखत आहे (Pain)",
+        "label": "खूप दुखत आहे",
         "spoken": "मला खूप वेदना होत आहेत"
       },
       {
         "id": "call_doc",
-        "label": "डॉक्टर बोलवा (Doctor)",
+        "label": "डॉक्टरांना बोलवा",
         "spoken": "कृपया डॉक्टरांना बोलवा"
       },
       {
         "id": "help",
-        "label": "मदत करा (Help)",
-        "spoken": "कृपया मला मदत करा"
+        "label": "मदत करा",
+        "spoken": "कृपया मला तात्काळ मदत करा"
       },
       {
         "id": "family",
-        "label": "कुटुंब (Family)",
-        "spoken": "माझ्या घरच्यांना बोलवा"
+        "label": "कुटुंबाला बोलवा",
+        "spoken": "कृपया माझ्या कुटुंबाला बोलवा"
       }
     ],
     "ui": {
+      "tagline": "बोलू न शकणाऱ्या रुग्णांचा आवाज",
+      "navHome": "मुख्यपृष्ठ",
+      "navPatient": "रुग्ण",
+      "navCaregiver": "काळजीवाहू",
+      "navDoctor": "डॉक्टर",
+      "navMedicines": "औषधे",
+      "switchRole": "भूमिका बदला",
+      "selectRoleBtn": "भूमिका निवडा",
+      "reset": "रीसेट",
+      "editProfile": "प्रोफाइल संपादित करा",
+      "selectRoleTitle": "तुमची भूमिका निवडा",
+      "selectRoleSub": "तुमच्या केअर पोर्टलमध्ये प्रवेश करण्यासाठी भूमिका निवडा.",
+      "patientLabel": "रुग्ण",
+      "caregiverLabel": "काळजीवाहू",
+      "doctorLabel": "डॉक्टर",
+      "enterPortal": "पोर्टल उघडा",
+      "signInAnother": "दुसऱ्या खात्याने साइन इन करा",
       "heroTitle": "बोलू न शकणाऱ्या रुग्णांचा आवाज",
-      "heroSub": "लक्षण स्पर्श करा. काळजीवाहू पाहतो... योग्य डॉक्टर उपचार करतो.",
-      "patientRole": "मी रुग्ण आहे",
-      "patientSub": "लक्षणे निवडा आणि त्वरित कळवा",
-      "caregiverRole": "मी काळजीवाहू आहे",
-      "caregiverSub": "थेट लक्षणे आणि औषध ट्रॅकिंग",
-      "doctorRole": "मी डॉक्टर आहे",
-      "doctorSub": "रुग्ण इतिहास आणि व्हिडिओ सल्ला",
-      "tapWhatYouFeel": "तुम्हाला काय त्रास होत आहे?",
-      "emergencyHelp": "तातडीची मदत (EMERGENCY HELP)",
-      "speakingLabel": "आवाज:",
-      "aiUrgency": "तातडीची पातळी",
+      "heroSub": "लक्षण स्पर्श करा. काळजीवाहू लगेच पाहतो आणि योग्य डॉक्टर जोडले जातात.",
+      "tapWhatYouFeel": "तुम्हाला काय जाणवत आहे ते स्पर्श करा",
+      "clearAll": "सर्व काढा",
+      "quickPhrases": "झटपट रुग्ण वाक्ये",
+      "speechFeedback": "आवाज प्रतिसाद",
+      "speechReady": "तयार. बोलण्यासाठी लक्षण किंवा वाक्य स्पर्श करा.",
+      "speakingLabel": "बोलत आहे:",
+      "emergencyHelp": "तातडीची मदत",
+      "emergencySpoken": "तातडीची मदत हवी आहे! कृपया लगेच मदत करा!",
+      "aiUrgency": "एआय निकड आणि सहाय्यक",
+      "aiUrgencyStatus": "एआय निकड स्थिती",
+      "aiGuidanceNotice": "केवळ एआय मार्गदर्शन आहे, डॉक्टरांचा सल्ला घ्या.",
+      "cameraIntegration": "कॅमेरा एकीकरण (8 हातांचे इशारे)",
+      "gestureCardTitle": "मीडियापाइप हातांचा इशारा कॅमेरा",
+      "gestureGuideTitle": "इशारा-ते-समस्या यादी (8 इशारे · कॅमेरा किंवा स्पर्श करा)",
+      "startCamera": "कॅमेरा सुरू करा",
+      "stopCamera": "कॅमेरा बंद करा",
+      "urgencyLow": "कमी निकड",
+      "urgencyMedium": "मध्यम निकड",
+      "urgencyHigh": "अत्यंत तातडीचे",
+      "caregiverLiveTitle": "काळजीवाहू थेट दृश्य",
       "reportedSymptoms": "नोंदवलेली लक्षणे",
       "currentMedicines": "सध्याची औषधे",
-      "findDoctor": "डॉक्टर शोधा",
-      "dangerousCombination": "धोकादायक औषध संयोजन",
-      "bookDoctorMatch": "मराठी भाषक डॉक्टर बुक करा →",
-      "gestureCardTitle": "इशारे नियंत्रण",
-      "gestureCardDesc": "हात दाखवून लक्षणे निवडा.",
-      "quickPhrases": "जलद संवाद (Quick Phrases)",
-      "filterLanguage": "भाषा:",
-      "filterSpecialty": "तज्ज्ञ:",
-      "markAsTaken": "घेतली",
-      "taken": "घेतली",
+      "bookDoctorMatch": "मराठी बोलणारे डॉक्टर बुक करा",
+      "medicinesTitle": "औषधे",
+      "medicinesSub": "दैनिक औषधांचे वेळापत्रक आणि सुरक्षितता तपासणी.",
+      "addMedicine": "जोडा",
+      "markAsTaken": "घेतले चिन्हांकित करा",
+      "taken": "घेतले",
       "pending": "बाकी",
-      "addMedicine": "औषध जोडा"
+      "doctorRoomTitle": "सल्लामसलत कक्ष"
     }
   },
   "bn": {
@@ -951,23 +1020,26 @@
         "icon": "💔",
         "urgency": "High",
         "label": "ਛਾਤੀ ਵਿੱਚ ਦਰਦ",
-        "spoken": "ਮੇਰੀ ਛਾਤੀ ਵਿੱਚ ਦਰਦ ਹੈ"
+        "spoken": "ਮੇਰੀ ਛਾਤੀ ਵਿੱਚ ਦਰਦ ਹੋ ਰਿਹਾ ਹੈ",
+        "spokenFallback": "मेरी छाती विच दर्द हो रिहा है"
       },
       {
         "id": "high-fever",
         "name": "High Fever",
         "icon": "🌡️",
         "urgency": "Medium",
-        "label": "ਤੇਜ਼ ਬੁਖਾਰ",
-        "spoken": "ਮੈਨੂੰ ਬਹੁਤ ਤੇਜ਼ ਬੁਖ਼ਾਰ ਹੈ"
+        "label": "ਤੇਜ਼ ਬੁਖ਼ਾਰ",
+        "spoken": "ਮੈਨੂੰ ਬਹੁਤ ਤੇਜ਼ ਬੁਖ਼ਾਰ ਹੈ",
+        "spokenFallback": "मैनूं बहुत तेज़ बुखार है"
       },
       {
         "id": "breathing-trouble",
         "name": "Breathing Trouble",
         "icon": "🫁",
         "urgency": "High",
-        "label": "ਸਾਹ ਲੈਣ ਚ ਤਕਲੀਫ",
-        "spoken": "ਮੈਨੂੰ ਸਾਹ ਲੈਣ ਵਿੱਚ ਔਖ ਹੋ ਰਹੀ ਹੈ"
+        "label": "ਸਾਹ ਲੈਣ ਵਿੱਚ ਤਕਲੀਫ਼",
+        "spoken": "ਮੈਨੂੰ ਸਾਹ ਲੈਣ ਵਿੱਚ ਔਖ ਹੋ ਰਹੀ ਹੈ",
+        "spokenFallback": "मैनूं साह लैण विच औख हो रही है"
       },
       {
         "id": "need-water",
@@ -975,7 +1047,8 @@
         "icon": "💧",
         "urgency": "Low",
         "label": "ਪਾਣੀ ਚਾਹੀਦਾ",
-        "spoken": "ਮੈਨੂੰ ਪੀਣ ਲਈ ਪਾਣੀ ਚਾਹੀਦਾ ਹੈ"
+        "spoken": "ਮੈਨੂੰ ਪੀਣ ਲਈ ਪਾਣੀ ਚਾਹੀਦਾ ਹੈ",
+        "spokenFallback": "मैनूं पीण लई पाणी चाहिदा है"
       },
       {
         "id": "headache",
@@ -983,15 +1056,17 @@
         "icon": "🤕",
         "urgency": "Medium",
         "label": "ਸਿਰ ਦਰਦ",
-        "spoken": "ਮੇਰੇ ਸਿਰ ਵਿੱਚ ਦਰਦ ਹੈ"
+        "spoken": "ਮੇਰੇ ਸਿਰ ਵਿੱਚ ਦਰਦ ਹੋ ਰਿਹਾ ਹੈ",
+        "spokenFallback": "मेरे सिर विच दर्द हो रिहा है"
       },
       {
         "id": "nausea",
         "name": "Nausea",
         "icon": "🤢",
         "urgency": "Medium",
-        "label": "ਉਲਟੀ ਆਉਣਾ",
-        "spoken": "ਮੇਰਾ ਜੀਅ ਕੱਚਾ ਹੋ ਰਿਹਾ ਹੈ"
+        "label": "ਜੀਅ ਕੱਚਾ ਹੋਣਾ",
+        "spoken": "ਮੇਰਾ ਜੀਅ ਕੱਚਾ ਹੋ ਰਿਹਾ ਹੈ",
+        "spokenFallback": "मेरा जीअ कच्चा हो रिहा है"
       },
       {
         "id": "dizziness",
@@ -999,96 +1074,132 @@
         "icon": "💫",
         "urgency": "Medium",
         "label": "ਚੱਕਰ ਆਉਣੇ",
-        "spoken": "ਮੈਨੂੰ ਚੱਕਰ ਆ ਰਹੇ ਹਨ"
+        "spoken": "ਮੈਨੂੰ ਚੱਕਰ ਆ ਰਹੇ ਹਨ",
+        "spokenFallback": "मैनूं चक्कर आ रहे हन"
       },
       {
         "id": "body-pain",
         "name": "Body Pain",
         "icon": "🦴",
         "urgency": "Medium",
-        "label": "ਸਰੀਰ ਦਾ ਦਰਦ",
-        "spoken": "ਮੇਰੇ ਸਾਰੇ ਸਰੀਰ ਵਿੱਚ ਪੀੜ ਹੈ"
+        "label": "ਸਰੀਰ ਵਿੱਚ ਦਰਦ",
+        "spoken": "ਮੇਰੇ ਸਾਰੇ ਸਰੀਰ ਵਿੱਚ ਦਰਦ ਹੈ",
+        "spokenFallback": "मेरे सारे शरीर विच दर्द है"
       }
     ],
     "phrases": [
       {
         "id": "yes",
         "label": "ਹਾਂ (Yes)",
-        "spoken": "ਹਾਂਜੀ"
+        "spoken": "ਹਾਂਜੀ",
+        "spokenFallback": "हांजी"
       },
       {
         "id": "no",
         "label": "ਨਹੀਂ (No)",
-        "spoken": "ਨਹੀਂ"
+        "spoken": "ਨਹੀਂ",
+        "spokenFallback": "नहीं"
       },
       {
         "id": "washroom",
-        "label": "🚻 वॉशरूम जाना है (Washroom)",
-        "spoken": "मुझे तुरंत वॉशरूम जाना है"
+        "label": "ਬਾਥਰੂਮ ਜਾਣਾ ਹੈ",
+        "spoken": "ਮੈਨੂੰ ਤੁਰੰਤ ਬਾਥਰੂਮ ਜਾਣਾ ਹੈ",
+        "spokenFallback": "मैनूं तुरंत बाथरूम जाणा है"
       },
       {
         "id": "water",
-        "label": "💧 पानी चाहिए (Water)",
-        "spoken": "मुझे पीने के लिए पानी चाहिए"
+        "label": "ਪਾਣੀ ਚਾਹੀਦਾ",
+        "spoken": "ਮੈਨੂੰ ਪੀਣ ਲਈ ਪਾਣੀ ਚਾਹੀਦਾ ਹੈ",
+        "spokenFallback": "मैनूं पीण लई पाणी चाहिदा है"
       },
       {
         "id": "sit_up",
-        "label": "🛏️ सहारा चाहिए (Sit Up)",
-        "spoken": "मुझे बैठने के लिए सहारा दीजिए"
+        "label": "ਬੈਠਣ ਵਿੱਚ ਮਦਦ",
+        "spoken": "ਕਿਰਪਾ ਕਰਕੇ ਮੈਨੂੰ ਬੈਠਣ ਵਿੱਚ ਸਹਾਰਾ ਦਿਓ",
+        "spokenFallback": "किरपा करके मैनूं बैठण विच सहारा दिओ"
       },
       {
         "id": "cold",
-        "label": "🥶 ठंड लग रही है (Cold)",
-        "spoken": "मुझे ठंड लग रही है, कंबल दीजिए"
+        "label": "ਠੰਢ ਲੱਗ ਰਹੀ ਹੈ",
+        "spoken": "ਮੈਨੂੰ ਠੰਢ ਲੱਗ ਰਹੀ ਹੈ, ਕੰਬਲ ਦਿਓ",
+        "spokenFallback": "मैनूं ठंड लग रही है, कंबल दिओ"
       },
       {
         "id": "pain",
-        "label": "ਬਹੁਤ ਪੀੜ ਹੈ (Pain)",
-        "spoken": "ਮੈਨੂੰ ਬਹੁਤ ਪੀੜ ਹੋ ਰਹੀ ਹੈ"
+        "label": "ਦਰਦ ਹੋ ਰਿਹਾ ਹੈ",
+        "spoken": "ਮੈਨੂੰ ਬਹੁਤ ਦਰਦ ਹੋ ਰਿਹਾ ਹੈ",
+        "spokenFallback": "मैनूं बहुत दर्द हो रिहा है"
       },
       {
         "id": "call_doc",
-        "label": "ਡਾਕਟਰ ਬੁਲਾਓ (Doctor)",
-        "spoken": "ਕਿਰਪਾ ਕਰਕੇ ਡਾਕਟਰ ਨੂੰ ਬੁਲਾਓ"
+        "label": "ਡਾਕਟਰ ਬੁਲਾਓ",
+        "spoken": "ਕਿਰਪਾ ਕਰਕੇ ਡਾਕਟਰ ਨੂੰ ਬੁਲਾਓ",
+        "spokenFallback": "किरपा करके डॉक्टर नूं बुलाओ"
       },
       {
         "id": "help",
-        "label": "ਮਦਦ ਕਰੋ (Help)",
-        "spoken": "ਮੇਰੀ ਮਦਦ ਕਰੋ"
+        "label": "ਮਦਦ ਕਰੋ",
+        "spoken": "ਕਿਰਪਾ ਕਰਕੇ ਮੇਰੀ ਮਦਦ ਕਰੋ",
+        "spokenFallback": "किरपा करके मेरी मदद करो"
       },
       {
         "id": "family",
-        "label": "ਘਰਦਿਆਂ ਨੂੰ ਬੁਲਾਓ (Family)",
-        "spoken": "ਮੇਰੇ ਪਰਿਵਾਰ ਨੂੰ ਬੁਲਾਓ"
+        "label": "ਪਰਿਵਾਰ ਨੂੰ ਬੁਲਾਓ",
+        "spoken": "ਕਿਰਪਾ ਕਰਕੇ ਮੇਰੇ ਪਰਿਵਾਰ ਨੂੰ ਬੁਲਾਓ",
+        "spokenFallback": "किरपा करके मेरे परिवार नूं बुलाओ"
       }
     ],
     "ui": {
-      "heroTitle": "ਬੇਜ਼ੁਬਾਨ ਮਰੀਜ਼ਾਂ ਦੀ ਆਵਾਜ਼",
-      "heroSub": "ਲੱਛਣ ਚੁਣੋ। ਦੇਖਭਾਲ ਕਰਨ ਵਾਲੇ ਨੂੰ ਤੁਰੰਤ ਪਤਾ ਲੱਗਦਾ ਹੈ... ਸਹੀ ਡਾਕਟਰ ਇਲਾਜ ਕਰਦਾ ਹੈ।",
-      "patientRole": "ਮੈਂ ਮਰੀਜ਼ ਹਾਂ",
-      "patientSub": "ਆਪਣੀ ਤਕਲੀਫ ਚੁਣੋ ਤੇ ਦੱਸੋ",
-      "caregiverRole": "ਮੈਂ ਦੇਖਭਾਲ ਕਰਦਾ ਹਾਂ",
-      "caregiverSub": "ਲਾਈਵ ਲੱਛਣ ਤੇ ਦਵਾਈਆਂ ਦਾ ਵੇਰਵਾ",
-      "doctorRole": "ਮੈਂ ਡਾਕਟਰ ਹਾਂ",
-      "doctorSub": "ਮਰੀਜ਼ ਦਾ ਵੇਰਵਾ ਤੇ ਵੀਡੀਓ ਸਲਾਹ",
-      "tapWhatYouFeel": "ਦੱਸੋ ਤੁਹਾਨੂੰ ਕੀ ਤਕਲੀਫ ਹੈ?",
-      "emergencyHelp": "ਐਮਰਜੈਂਸੀ ਮਦਦ (EMERGENCY HELP)",
+      "tagline": "ਬੋਲ ਨਾ ਸਕਣ ਵਾਲੇ ਮਰੀਜ਼ਾਂ ਦੀ ਆਵਾਜ਼",
+      "navHome": "ਹੋਮ",
+      "navPatient": "ਮਰੀਜ਼",
+      "navCaregiver": "ਦੇਖਭਾਲਕਰਤਾ",
+      "navDoctor": "ਡਾਕਟਰ",
+      "navMedicines": "ਦਵਾਈਆਂ",
+      "switchRole": "ਭੂਮਿਕਾ ਬਦਲੋ",
+      "selectRoleBtn": "ਭੂਮਿਕਾ ਚੁਣੋ",
+      "reset": "ਰੀਸੈੱਟ",
+      "editProfile": "ਪ੍ਰੋਫ਼ਾਈਲ ਬਦਲੋ",
+      "selectRoleTitle": "ਆਪਣੀ ਭੂਮਿਕਾ ਚੁਣੋ",
+      "selectRoleSub": "ਆਪਣੇ ਕੇਅਰ ਪੋਰਟਲ ਵਿੱਚ ਜਾਣ ਲਈ ਭੂਮਿਕਾ ਚੁਣੋ।",
+      "patientLabel": "ਮਰੀਜ਼",
+      "caregiverLabel": "ਦੇਖਭਾਲਕਰਤਾ",
+      "doctorLabel": "ਡਾਕਟਰ",
+      "enterPortal": "ਪੋਰਟਲ ਖੋਲ੍ਹੋ",
+      "signInAnother": "ਕਿਸੇ ਹੋਰ ਖਾਤੇ ਨਾਲ ਸਾਈਨ ਇਨ ਕਰੋ",
+      "heroTitle": "ਬੋਲ ਨਾ ਸਕਣ ਵਾਲੇ ਮਰੀਜ਼ਾਂ ਦੀ ਆਵਾਜ਼",
+      "heroSub": "ਲੱਛਣ ਚੁਣੋ। ਦੇਖਭਾਲਕਰਤਾ ਤੁਰੰਤ ਦੇਖੇਗਾ ਅਤੇ ਸਹੀ ਡਾਕਟਰ ਜੁੜੇਗਾ।",
+      "tapWhatYouFeel": "ਜੋ ਮਹਿਸੂਸ ਹੋ ਰਿਹਾ ਹੈ ਉਸਨੂੰ ਛੂਹੋ",
+      "clearAll": "ਸਭ ਹਟਾਓ",
+      "quickPhrases": "ਤੇਜ਼ ਮਰੀਜ਼ ਵਾਕ",
+      "speechFeedback": "ਆਵਾਜ਼ ਪ੍ਰਤੀਕਿਰਿਆ",
+      "speechReady": "ਤਿਆਰ। ਬੋਲਣ ਲਈ ਕੋਈ ਲੱਛਣ ਜਾਂ ਵਾਕ ਦਬਾਓ।",
       "speakingLabel": "ਬੋਲ ਰਿਹਾ ਹੈ:",
-      "aiUrgency": "ਜ਼ਰੂਰੀ ਪੱਧਰ",
+      "emergencyHelp": "ਐਮਰਜੈਂਸੀ ਮਦਦ",
+      "emergencySpoken": "ਐਮਰਜੈਂਸੀ ਮਦਦ ਦੀ ਲੋੜ ਹੈ! ਕਿਰਪਾ ਕਰਕੇ ਤੁਰੰਤ ਮਦਦ ਕਰੋ!",
+      "emergencySpokenFallback": "एमरजैंसी मदद दी लोड़ है! किरपा करके तुरंत मदद करो!",
+      "aiUrgency": "ਏਆਈ ਜ਼ਰੂਰੀ ਪੱਧਰ ਅਤੇ ਸਹਾਇਕ",
+      "aiUrgencyStatus": "ਏਆਈ ਜ਼ਰੂਰੀ ਸਥਿਤੀ",
+      "aiGuidanceNotice": "ਸਿਰਫ਼ ਏਆਈ ਮਾਰਗਦਰਸ਼ਨ ਹੈ, ਡਾਕਟਰ ਦੀ ਸਲਾਹ ਲਓ।",
+      "cameraIntegration": "ਕੈਮਰਾ ਏਕੀਕਰਣ (8 ਹੱਥਾਂ ਦੇ ਇਸ਼ਾਰੇ)",
+      "gestureCardTitle": "ਮੀਡੀਆਪਾਈਪ ਹੱਥ ਇਸ਼ਾਰਾ ਕੈਮਰਾ",
+      "gestureGuideTitle": "ਇਸ਼ਾਰੇ-ਤੋਂ-ਸਮੱਸਿਆ ਸੂਚੀ (8 ਇਸ਼ਾਰੇ · ਕੈਮਰਾ ਜਾਂ ਟੈਪ ਕਰੋ)",
+      "startCamera": "ਕੈਮਰਾ ਸ਼ੁਰੂ ਕਰੋ",
+      "stopCamera": "ਕੈਮਰਾ ਬੰਦ ਕਰੋ",
+      "urgencyLow": "ਘੱਟ ਜ਼ਰੂਰੀ",
+      "urgencyMedium": "ਦਰਮਿਆਨੀ ਜ਼ਰੂਰੀ",
+      "urgencyHigh": "ਬਹੁਤ ਜ਼ਰੂਰੀ",
+      "caregiverLiveTitle": "ਦੇਖਭਾਲਕਰਤਾ ਲਾਈਵ ਦ੍ਰਿਸ਼",
       "reportedSymptoms": "ਦਰਜ ਕੀਤੇ ਲੱਛਣ",
       "currentMedicines": "ਮੌਜੂਦਾ ਦਵਾਈਆਂ",
-      "findDoctor": "ਡਾਕਟਰ ਲੱਭੋ",
-      "dangerousCombination": "ਖ਼ਤਰਨਾਕ ਦਵਾਈਆਂ ਦਾ ਮੇਲ",
-      "bookDoctorMatch": "ਪੰਜਾਬੀ ਬੋਲਣ ਵਾਲਾ ਡਾਕਟਰ ਬੁੱਕ ਕਰੋ →",
-      "gestureCardTitle": "ਇਸ਼ਾਰਿਆਂ ਨਾਲ ਕੰਟਰੋਲ",
-      "gestureCardDesc": "ਕੈਮਰੇ ਅੱਗੇ ਹੱਥ ਹਿਲਾ ਕੇ ਲੱਛਣ ਚੁਣੋ।",
-      "quickPhrases": "ਤੇਜ਼ ਗੱਲਬਾਤ (Quick Phrases)",
-      "filterLanguage": "ਭਾਸ਼ਾ:",
-      "filterSpecialty": "ਮਾਹਿਰ:",
-      "markAsTaken": "ਲੈ ਲਈ",
+      "bookDoctorMatch": "ਪੰਜਾਬੀ ਬੋਲਣ ਵਾਲਾ ਡਾਕਟਰ ਬੁੱਕ ਕਰੋ",
+      "medicinesTitle": "ਦਵਾਈਆਂ",
+      "medicinesSub": "ਰੋਜ਼ਾਨਾ ਦਵਾਈਆਂ ਦੀ ਸੂਚੀ ਅਤੇ ਸੁਰੱਖਿਆ ਜਾਂਚ।",
+      "addMedicine": "ਸ਼ਾਮਲ ਕਰੋ",
+      "markAsTaken": "ਲੈ ਲਈ ਚਿੰਨ੍ਹਿਤ ਕਰੋ",
       "taken": "ਲੈ ਲਈ",
       "pending": "ਬਾਕੀ",
-      "addMedicine": "ਦਵਾਈ ਸ਼ਾਮਲ ਕਰੋ"
+      "doctorRoomTitle": "ਸਲਾਹ-ਮਸ਼ਵਰਾ ਕਮਰਾ"
     }
   },
   "gu": {
@@ -2345,8 +2456,8 @@
       "name": "Maithili",
       "nativeName": "मैथिली",
       "script": "Devanagari",
-      "region": "Mithila / Bihar",
-      "speechLocale": "hi-IN"
+      "region": "Mithila (Bihar & Jharkhand)",
+      "speechLocale": "mai-IN"
     },
     "symptoms": [
       {
@@ -2354,145 +2465,168 @@
         "name": "Chest Pain",
         "icon": "💔",
         "urgency": "High",
-        "label": "सीने में दर्द",
-        "spoken": "मेरे सीने में दर्द है"
+        "label": "छाती मे दर्द",
+        "spoken": "हमर छाती मे बहुत दर्द अछि"
       },
       {
         "id": "high-fever",
         "name": "High Fever",
         "icon": "🌡️",
         "urgency": "Medium",
-        "label": "तेज़ बुखार",
-        "spoken": "मुझे तेज़ बुखार है"
+        "label": "तेज बुखार",
+        "spoken": "हमरा तेज बुखार लागल अछि"
       },
       {
         "id": "breathing-trouble",
         "name": "Breathing Trouble",
         "icon": "🫁",
         "urgency": "High",
-        "label": "सांस में तकलीफ",
-        "spoken": "मुझे सांस लेने में तकलीफ हो रही है"
+        "label": "साँस लेबा मे दिक्कत",
+        "spoken": "हमरा साँस लेबा मे दिक्कत भ रहल अछि"
       },
       {
         "id": "need-water",
         "name": "Need Water",
         "icon": "💧",
         "urgency": "Low",
-        "label": "पानी चाहिए",
-        "spoken": "मुझे पानी चाहिए"
+        "label": "पानि चाही",
+        "spoken": "हमरा पीबाक लेल पानि चाही"
       },
       {
         "id": "headache",
         "name": "Headache",
         "icon": "🤕",
         "urgency": "Medium",
-        "label": "सिरदर्द",
-        "spoken": "मेरे सिर में दर्द है"
+        "label": "माथ मे दर्द",
+        "spoken": "हमर माथ मे दर्द भ रहल अछि"
       },
       {
         "id": "nausea",
         "name": "Nausea",
         "icon": "🤢",
         "urgency": "Medium",
-        "label": "जी मिचलाना",
-        "spoken": "मेरा जी मिचला रहा है"
+        "label": "जी मिचलायब",
+        "spoken": "हमर जी मिचला रहल अछि"
       },
       {
         "id": "dizziness",
         "name": "Dizziness",
         "icon": "💫",
         "urgency": "Medium",
-        "label": "चक्कर आना",
-        "spoken": "मुझे चक्कर आ रहे हैं"
+        "label": "चक्कर आयब",
+        "spoken": "हमरा चक्कर आबि रहल अछि"
       },
       {
         "id": "body-pain",
         "name": "Body Pain",
         "icon": "🦴",
         "urgency": "Medium",
-        "label": "बदन दर्द",
-        "spoken": "मेरे पूरे शरीर में दर्द है"
+        "label": "देह मे दर्द",
+        "spoken": "हमर पूरा देह मे दर्द भ रहल अछि"
       }
     ],
     "phrases": [
       {
         "id": "yes",
-        "label": "हाँ / Yes",
-        "spoken": "हाँ"
+        "label": "हँ (Yes)",
+        "spoken": "हँ"
       },
       {
         "id": "no",
-        "label": "नहीं / No",
-        "spoken": "नहीं"
+        "label": "नहि (No)",
+        "spoken": "नहि"
       },
       {
         "id": "washroom",
-        "label": "🚻 वॉशरूम जाना है (Washroom)",
-        "spoken": "मुझे तुरंत वॉशरूम जाना है"
+        "label": "शौचालय जयबाक अछि",
+        "spoken": "हमरा तुरंत शौचालय जयबाक अछि"
       },
       {
         "id": "water",
-        "label": "💧 पानी चाहिए (Water)",
-        "spoken": "मुझे पीने के लिए पानी चाहिए"
+        "label": "पानि चाही",
+        "spoken": "हमरा पीबाक लेल पानि चाही"
       },
       {
         "id": "sit_up",
-        "label": "🛏️ सहारा चाहिए (Sit Up)",
-        "spoken": "मुझे बैठने के लिए सहारा दीजिए"
+        "label": "बैसबा मे सहारा",
+        "spoken": "कृपया हमरा बैसबा मे सहारा दिअ"
       },
       {
         "id": "cold",
-        "label": "🥶 ठंड लग रही है (Cold)",
-        "spoken": "मुझे ठंड लग रही है, कंबल दीजिए"
+        "label": "जाड़ लागि रहल अछि",
+        "spoken": "हमरा जाड़ लागि रहल अछि, कंबल दिअ"
       },
       {
         "id": "pain",
-        "label": "दर्द / Pain",
-        "spoken": "मुझे बहुत दर्द हो रहा है"
+        "label": "दर्द भ रहल अछि",
+        "spoken": "हमरा बहुत दर्द भ रहल अछि"
       },
       {
         "id": "call_doc",
-        "label": "डॉक्टर / Doctor",
-        "spoken": "कृपया डॉक्टर को बुलाएं"
+        "label": "डॉक्टर केँ बजाउ",
+        "spoken": "कृपया डॉक्टर केँ बजाउ"
       },
       {
         "id": "help",
-        "label": "मदद / Help",
-        "spoken": "कृपया मेरी मदद करें"
+        "label": "मदद करू",
+        "spoken": "कृपया हमर मदद करू"
       },
       {
         "id": "family",
-        "label": "परिवार / Family",
-        "spoken": "मेरे परिवार को बुलाएं"
+        "label": "परिवार केँ बजाउ",
+        "spoken": "कृपया हमर परिवार केँ बजाउ"
       }
     ],
     "ui": {
-      "heroTitle": "मैथिली: बोल न सकने वाले मरीजों की आवाज़",
-      "heroSub": "लक्षण छुएं। देखभालकर्ता तुरंत देखेगा... सही डॉक्टर जुड़ेगा। दवाएं सुरक्षित रहेंगी।",
-      "patientRole": "मैं मरीज़ हूँ (मैथिली)",
-      "patientSub": "अपने लक्षण छुएं और देखभालकर्ता को सूचित करें",
-      "caregiverRole": "मैं देखभालकर्ता हूँ",
-      "caregiverSub": "लक्षण, तात्कालिकता और दवाओं का लाइव विवरण",
-      "doctorRole": "मैं डॉक्टर हूँ",
-      "doctorSub": "मरीज़ का विवरण देखें और परामर्श शुरू करें",
-      "tapWhatYouFeel": "बताएं आपको क्या महसूस हो रहा है (मैथिली)",
-      "emergencyHelp": "आपातकालीन मदद (EMERGENCY HELP)",
-      "speakingLabel": "आवाज़ में बोल रहे हैं:",
-      "aiUrgency": "एआई तात्कालिकता",
+      "tagline": "नहि बाजि सकनिहार रोगीक आवाज",
+      "navHome": "होम",
+      "navPatient": "रोगी",
+      "navCaregiver": "देखभालकर्ता",
+      "navDoctor": "डॉक्टर",
+      "navMedicines": "दवाई",
+      "switchRole": "भूमिका बदलू",
+      "selectRoleBtn": "भूमिका चुनू",
+      "reset": "रीसेट",
+      "editProfile": "प्रोफ़ाइल बदलू",
+      "selectRoleTitle": "अपन भूमिका चुनू",
+      "selectRoleSub": "अपन केयर पोर्टल मे प्रवेश करबाक लेल भूमिका चुनू।",
+      "patientLabel": "रोगी",
+      "caregiverLabel": "देखभालकर्ता",
+      "doctorLabel": "डॉक्टर",
+      "enterPortal": "पोर्टल खोलू",
+      "signInAnother": "दोसर खाता सँ साइन इन करू",
+      "heroTitle": "नहि बाजि सकनिहार रोगीक आवाज",
+      "heroSub": "लक्षण छुउ। देखभालकर्ता तुरंत देखताह आ सही डॉक्टर जुड़ताह।",
+      "tapWhatYouFeel": "जे महसूस भ रहल अछि तकरा छुउ",
+      "clearAll": "सभ हटाउ",
+      "quickPhrases": "तुरंत रोगी संवाद",
+      "speechFeedback": "आवाज प्रतिक्रिया",
+      "speechReady": "तैयार। बजबाक लेल कोनो लक्षण वा वाक्य छुउ।",
+      "speakingLabel": "बाजि रहल अछि:",
+      "emergencyHelp": "आपातकालीन मदद",
+      "emergencySpoken": "आपातकालीन मदद चाही! कृपया तुरंत मदद करू!",
+      "aiUrgency": "एआई जरूरी स्थिति आ सहायक",
+      "aiUrgencyStatus": "एआई जरूरी स्थिति",
+      "aiGuidanceNotice": "केवल एआई मार्गदर्शन अछि, डॉक्टर सँ सलाह लिअ।",
+      "cameraIntegration": "कैमरा एकीकरण (8 हाथक इशारा)",
+      "gestureCardTitle": "मीडियापाइप हाथ इशारा कैमरा",
+      "gestureGuideTitle": "इशारा-सँ-समस्या सूची (8 इशारा · कैमरा वा टैप करू)",
+      "startCamera": "कैमरा शुरू करू",
+      "stopCamera": "कैमरा बंद करू",
+      "urgencyLow": "कम जरूरी",
+      "urgencyMedium": "मध्यम जरूरी",
+      "urgencyHigh": "बहुत जरूरी",
+      "caregiverLiveTitle": "देखभालकर्ता लाइव दृश्य",
       "reportedSymptoms": "दर्ज लक्षण",
-      "currentMedicines": "वर्तमान दवाएं",
-      "findDoctor": "डॉक्टर खोजें",
-      "dangerousCombination": "खतरनाक दवा संयोजन",
-      "bookDoctorMatch": "मैथिली डॉक्टर बुक करें →",
-      "gestureCardTitle": "मीडियापाइप जेस्चर नियंत्रण (वैकल्पिक)",
-      "gestureCardDesc": "कैमरे के सामने हाथ के इशारे या सिर हिलाकर लक्षण चुनें।",
-      "quickPhrases": "त्वरित संवाद (मैथिली)",
-      "filterLanguage": "भाषा:",
-      "filterSpecialty": "विशेषज्ञता:",
-      "markAsTaken": "दवा ले ली (Mark as Taken)",
-      "taken": "ले ली (Taken)",
-      "pending": "बाकी है (Pending)",
-      "addMedicine": "दवा जोड़ें"
+      "currentMedicines": "वर्तमान दवाई",
+      "bookDoctorMatch": "मैथिली बजनिहार डॉक्टर बुक करू",
+      "medicinesTitle": "दवाई",
+      "medicinesSub": "दैनिक दवाईक समय-सारणी आ सुरक्षा जाँच।",
+      "addMedicine": "जोड़ू",
+      "markAsTaken": "लेल गेल चिह्नित करू",
+      "taken": "लेल गेल",
+      "pending": "बाकी",
+      "doctorRoomTitle": "परामर्श कक्ष"
     }
   },
   "ks": {
@@ -2812,9 +2946,9 @@
       "code": "sd",
       "name": "Sindhi",
       "nativeName": "सिंधी / سنڌي",
-      "script": "Perso-Arabic / Devanagari",
+      "script": "Devanagari / Perso-Arabic",
       "region": "Gujarat, Rajasthan, Maharashtra",
-      "speechLocale": "hi-IN"
+      "speechLocale": "sd-IN"
     },
     "symptoms": [
       {
@@ -2822,145 +2956,168 @@
         "name": "Chest Pain",
         "icon": "💔",
         "urgency": "High",
-        "label": "सीने में दर्द",
-        "spoken": "मेरे सीने में दर्द है"
+        "label": "सीने में सूर",
+        "spoken": "मुंहिंजे सीने में सूर आहे"
       },
       {
         "id": "high-fever",
         "name": "High Fever",
         "icon": "🌡️",
         "urgency": "Medium",
-        "label": "तेज़ बुखार",
-        "spoken": "मुझे तेज़ बुखार है"
+        "label": "तेज़ बुख़ार",
+        "spoken": "मुंहिंखे तेज़ बुख़ार आहे"
       },
       {
         "id": "breathing-trouble",
         "name": "Breathing Trouble",
         "icon": "🫁",
         "urgency": "High",
-        "label": "सांस में तकलीफ",
-        "spoken": "मुझे सांस लेने में तकलीफ हो रही है"
+        "label": "साह खणण में तकलीफ़",
+        "spoken": "मुंहिंखे साह खणण में तकलीफ़ थी रही आहे"
       },
       {
         "id": "need-water",
         "name": "Need Water",
         "icon": "💧",
         "urgency": "Low",
-        "label": "पानी चाहिए",
-        "spoken": "मुझे पानी चाहिए"
+        "label": "पाणी घुरजे",
+        "spoken": "मुंहिंखे पीअण लाइ पाणी घुरजे"
       },
       {
         "id": "headache",
         "name": "Headache",
         "icon": "🤕",
         "urgency": "Medium",
-        "label": "सिरदर्द",
-        "spoken": "मेरे सिर में दर्द है"
+        "label": "मथे में सूर",
+        "spoken": "मुंहिंजे मथे में सूर आहे"
       },
       {
         "id": "nausea",
         "name": "Nausea",
         "icon": "🤢",
         "urgency": "Medium",
-        "label": "जी मिचलाना",
-        "spoken": "मेरा जी मिचला रहा है"
+        "label": "जीउ ख़राब थियण",
+        "spoken": "मुंहिंजो जीउ ख़राब थी रहियो आहे"
       },
       {
         "id": "dizziness",
         "name": "Dizziness",
         "icon": "💫",
         "urgency": "Medium",
-        "label": "चक्कर आना",
-        "spoken": "मुझे चक्कर आ रहे हैं"
+        "label": "चक्कर अचण",
+        "spoken": "मुंहिंखे चक्कर अची रहिया आहिन"
       },
       {
         "id": "body-pain",
         "name": "Body Pain",
         "icon": "🦴",
         "urgency": "Medium",
-        "label": "बदन दर्द",
-        "spoken": "मेरे पूरे शरीर में दर्द है"
+        "label": "जिस्म में सूर",
+        "spoken": "मुंहिंजे पूरे जिस्म में सूर आहे"
       }
     ],
     "phrases": [
       {
         "id": "yes",
-        "label": "हाँ / Yes",
-        "spoken": "हाँ"
+        "label": "हा (Yes)",
+        "spoken": "हा"
       },
       {
         "id": "no",
-        "label": "नहीं / No",
-        "spoken": "नहीं"
+        "label": "न (No)",
+        "spoken": "न"
       },
       {
         "id": "washroom",
-        "label": "🚻 वॉशरूम जाना है (Washroom)",
-        "spoken": "मुझे तुरंत वॉशरूम जाना है"
+        "label": "बाथरूम वञणो आहे",
+        "spoken": "मुंहिंखे तुरंत बाथरूम वञणो आहे"
       },
       {
         "id": "water",
-        "label": "💧 पानी चाहिए (Water)",
-        "spoken": "मुझे पीने के लिए पानी चाहिए"
+        "label": "पाणी घुरजे",
+        "spoken": "मुंहिंखे पीअण लाइ पाणी घुरजे"
       },
       {
         "id": "sit_up",
-        "label": "🛏️ सहारा चाहिए (Sit Up)",
-        "spoken": "मुझे बैठने के लिए सहारा दीजिए"
+        "label": "वेहण में मदद",
+        "spoken": "महरबानी करे मुंहिंखे वेहण में मदद कयो"
       },
       {
         "id": "cold",
-        "label": "🥶 ठंड लग रही है (Cold)",
-        "spoken": "मुझे ठंड लग रही है, कंबल दीजिए"
+        "label": "सीउ लगी रहियो आहे",
+        "spoken": "मुंहिंखे सीउ लगी रहियो आहे, कंबल डियो"
       },
       {
         "id": "pain",
-        "label": "दर्द / Pain",
-        "spoken": "मुझे बहुत दर्द हो रहा है"
+        "label": "सूर थी रहियो आहे",
+        "spoken": "मुंहिंखे डांढो सूर थी रहियो आहे"
       },
       {
         "id": "call_doc",
-        "label": "डॉक्टर / Doctor",
-        "spoken": "कृपया डॉक्टर को बुलाएं"
+        "label": "डॉक्टर खे घुरायो",
+        "spoken": "महरबानी करे डॉक्टर खे घुरायो"
       },
       {
         "id": "help",
-        "label": "मदद / Help",
-        "spoken": "कृपया मेरी मदद करें"
+        "label": "मदद कयो",
+        "spoken": "महरबानी करे मुंहिंजी मदद कयो"
       },
       {
         "id": "family",
-        "label": "परिवार / Family",
-        "spoken": "मेरे परिवार को बुलाएं"
+        "label": "घर वारन खे घुरायो",
+        "spoken": "मुंहिंजे घर वारन खे घुरायो"
       }
     ],
     "ui": {
-      "heroTitle": "सिंधी / سنڌي: बोल न सकने वाले मरीजों की आवाज़",
-      "heroSub": "लक्षण छुएं। देखभालकर्ता तुरंत देखेगा... सही डॉक्टर जुड़ेगा। दवाएं सुरक्षित रहेंगी।",
-      "patientRole": "मैं मरीज़ हूँ (सिंधी / سنڌي)",
-      "patientSub": "अपने लक्षण छुएं और देखभालकर्ता को सूचित करें",
-      "caregiverRole": "मैं देखभालकर्ता हूँ",
-      "caregiverSub": "लक्षण, तात्कालिकता और दवाओं का लाइव विवरण",
-      "doctorRole": "मैं डॉक्टर हूँ",
-      "doctorSub": "मरीज़ का विवरण देखें और परामर्श शुरू करें",
-      "tapWhatYouFeel": "बताएं आपको क्या महसूस हो रहा है (सिंधी / سنڌي)",
-      "emergencyHelp": "आपातकालीन मदद (EMERGENCY HELP)",
-      "speakingLabel": "आवाज़ में बोल रहे हैं:",
-      "aiUrgency": "एआई तात्कालिकता",
-      "reportedSymptoms": "दर्ज लक्षण",
-      "currentMedicines": "वर्तमान दवाएं",
-      "findDoctor": "डॉक्टर खोजें",
-      "dangerousCombination": "खतरनाक दवा संयोजन",
-      "bookDoctorMatch": "सिंधी / سنڌي डॉक्टर बुक करें →",
-      "gestureCardTitle": "मीडियापाइप जेस्चर नियंत्रण (वैकल्पिक)",
-      "gestureCardDesc": "कैमरे के सामने हाथ के इशारे या सिर हिलाकर लक्षण चुनें।",
-      "quickPhrases": "त्वरित संवाद (सिंधी / سنڌي)",
-      "filterLanguage": "भाषा:",
-      "filterSpecialty": "विशेषज्ञता:",
-      "markAsTaken": "दवा ले ली (Mark as Taken)",
-      "taken": "ले ली (Taken)",
-      "pending": "बाकी है (Pending)",
-      "addMedicine": "दवा जोड़ें"
+      "tagline": "ग़ाल्हाए न सघंदड़ मरीज़न जो आवाज़",
+      "navHome": "होम",
+      "navPatient": "मरीज़",
+      "navCaregiver": "संभाल कंदड़",
+      "navDoctor": "डॉक्टर",
+      "navMedicines": "दवाऊँ",
+      "switchRole": "भूमिका बदलायो",
+      "selectRoleBtn": "भूमिका चूंडियो",
+      "reset": "रीसेट",
+      "editProfile": "प्रोफ़ाइल बदलायो",
+      "selectRoleTitle": "पंहिंजी भूमिका चूंडियो",
+      "selectRoleSub": "पंहिंजे केयर पोर्टल में वञण लाइ भूमिका चूंडियो।",
+      "patientLabel": "मरीज़",
+      "caregiverLabel": "संभाल कंदड़",
+      "doctorLabel": "डॉक्टर",
+      "enterPortal": "पोर्टल खोलियो",
+      "signInAnother": "बिए खाते सां साइन इन कयो",
+      "heroTitle": "ग़ाल्हाए न सघंदड़ मरीज़न जो आवाज़",
+      "heroSub": "तकलीफ़ ते टैप कयो। संभाल कंदड़ तुरंत दिसंदो ऐं सही डॉक्टर मिलंदो।",
+      "tapWhatYouFeel": "जेको महसूस थिये उन ते टैप कयो",
+      "clearAll": "सभ हटायो",
+      "quickPhrases": "तुरंत ग़ाल्हियूं",
+      "speechFeedback": "आवाज़ प्रतिक्रिया",
+      "speechReady": "तैयार। ग़ाल्हाइण लाइ का तकलीफ़ या जुमलो दबाइयो।",
+      "speakingLabel": "ग़ाल्हाए रहियो आहे:",
+      "emergencyHelp": "इमरजेंसी मदद",
+      "emergencySpoken": "इमरजेंसी मदद घुरजे! महरबानी करे तुरंत मदद कयो!",
+      "aiUrgency": "एआई ज़रूरी हालत ऐं मददगार",
+      "aiUrgencyStatus": "एआई ज़रूरी हालत",
+      "aiGuidanceNotice": "रगो एआई रहनुमाई आहे, डॉक्टर खां सलाह वठो।",
+      "cameraIntegration": "कैमरा एकीकरण (8 हथन जा इशारा)",
+      "gestureCardTitle": "मीडियापाइप हथ इशारा कैमरा",
+      "gestureGuideTitle": "इशारे-सां-तकलीफ़ सूची (8 इशारा · कैमरा या टैप कयो)",
+      "startCamera": "कैमरा शुरू कयो",
+      "stopCamera": "कैमरा बंद कयो",
+      "urgencyLow": "घट ज़रूरी",
+      "urgencyMedium": "दरमियानी ज़रूरी",
+      "urgencyHigh": "डांढो ज़रूरी",
+      "caregiverLiveTitle": "संभाल कंदड़ लाइव नज़ारो",
+      "reportedSymptoms": "दर्ज तकलीफ़ूं",
+      "currentMedicines": "मौजूदा दवाऊँ",
+      "bookDoctorMatch": "सिंधी ग़ाल्हाइंदड़ डॉक्टर बुक कयो",
+      "medicinesTitle": "दवाऊँ",
+      "medicinesSub": "रोज़ानी दवा जो शेड्यूल ऐं सुरक्षा जांच।",
+      "addMedicine": "शामिल कयो",
+      "markAsTaken": "दवा वरती आहे",
+      "taken": "वरती आहे",
+      "pending": "बाकी",
+      "doctorRoomTitle": "मशवरे जो कमरो"
     }
   },
   "sat": {
