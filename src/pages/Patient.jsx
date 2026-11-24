@@ -11,7 +11,6 @@ import { speak } from '../lib/speech.js';
 import {
   getPatient,
   toggleSymptom,
-  addSymptom,
   clearSymptoms,
   setTriageResult,
   triggerEmergency,
@@ -252,125 +251,24 @@ export default function Patient() {
     setAiSummary('EMERGENCY ALERT: Immediate caregiver and doctor assistance requested.');
   };
 
-  // Full 8-Gesture Camera Control Handler
+  // 1-to-1 Gesture -> Specific Problem Handler (all 8 gestures)
   const handleGestureDetected = async (gesture) => {
-    const speechLocale = currentLangObj.speechLocale || 'hi-IN';
-    const currentSymptom = symptomsData[highlightedIndex] || symptomsData[0];
+    if (!gesture?.symptomId) return;
+    const matchedSymptom = symptomsData.find((s) => s.id === gesture.symptomId);
+    if (!matchedSymptom) return;
 
-    if (gesture.action === 'hand_detected') {
-      const targetText = getSymptomText(currentSymptom.id, langCode);
-      setSpeakingText(
-        `Open Palm · Focused: “${targetText.label}” (Thumbs Up to toggle, Point for next)`
-      );
-      setAlertNotification({
-        tier: 'calm',
-        text: `1. Open Palm detected · Focused on “${currentSymptom.name}”. Show Thumbs Up to select/unselect.`
-      });
-      return;
-    }
+    const wasSelected = activeSymptoms.includes(matchedSymptom.name);
+    await handleSymptomClick(matchedSymptom);
 
-    if (gesture.action === 'emergency') {
-      await handleEmergencyClick();
-      return;
-    }
-
-    if (gesture.action === 'confirm_symptom') {
-      await handleSymptomClick(currentSymptom);
-      const wasSelected = activeSymptoms.includes(currentSymptom.name);
-      setAlertNotification({
-        tier: 'calm',
-        text: wasSelected
-          ? `3. Thumbs Up: Unselected “${currentSymptom.name}”.`
-          : `3. Thumbs Up: Selected “${currentSymptom.name}”.`
-      });
-      return;
-    }
-
-    if (gesture.action === 'unselect_or_prev') {
-      if (activeSymptoms.includes(currentSymptom.name)) {
-        await handleSymptomClick(currentSymptom);
-        setAlertNotification({
-          tier: 'calm',
-          text: `4. Thumbs Down: Unselected “${currentSymptom.name}”.`
-        });
-      } else {
-        const prevIndex = (highlightedIndex - 1 + symptomsData.length) % symptomsData.length;
-        const prevSymptom = symptomsData[prevIndex];
-        const prevText = getSymptomText(prevSymptom.id, langCode);
-        setHighlightedIndex(prevIndex);
-        triggerSpeech(
-          prevText.label,
-          speechLocale,
-          `Focused previous symptom: “${prevText.label}” (${prevSymptom.name})`,
-          { playChime: false }
-        );
-        setAlertNotification({
-          tier: 'calm',
-          text: `4. Thumbs Down: Moved focus back to “${prevSymptom.name}”.`
-        });
-      }
-      return;
-    }
-
-    if (gesture.action === 'next_symptom') {
-      const nextIndex = (highlightedIndex + 1) % symptomsData.length;
-      const nextSymptom = symptomsData[nextIndex];
-      const nextText = getSymptomText(nextSymptom.id, langCode);
-      setHighlightedIndex(nextIndex);
-      triggerSpeech(
-        nextText.label,
-        speechLocale,
-        `Focused next symptom: “${nextText.label}” (${nextSymptom.name})`,
-        { playChime: false }
-      );
-      setAlertNotification({
-        tier: 'calm',
-        text: `5. Index Point: Moved focus to “${nextSymptom.name}”. Show Thumbs Up to select.`
-      });
-      return;
-    }
-
-    if (gesture.action === 'doctor') {
-      triggerSpeech(gesture.spoken, speechLocale, `6. V-Sign (Peace): “${gesture.spoken}”`);
-      await setQuickAlert('V-Sign Gesture: Patient requested Doctor Consultation');
-      setAlertNotification({
-        tier: 'orange',
-        text: '6. V-Sign detected: Orange alert — Doctor consultation requested.'
-      });
-      return;
-    }
-
-    if (gesture.action === 'okay') {
-      const okSpeech = langCode === 'hi' ? 'मैं ठीक हूँ' : 'I am okay, feeling better';
-      triggerSpeech(okSpeech, speechLocale, `7. “Okay” Sign: “${okSpeech}”`);
-      if (emergencyActive) {
-        await handleDismissEmergency();
-      }
-      setAlertNotification({
-        tier: 'calm',
-        text: '7. “Okay” Sign detected: Patient signaled they are okay / comfortable.'
-      });
-      return;
-    }
-
-    if (gesture.action === 'water') {
-      const waterSymptom = symptomsData.find((s) => s.id === 'need-water');
-      const waterSpeech = langCode === 'hi' ? 'मुझे पानी चाहिए' : 'I need drinking water';
-      triggerSpeech(waterSpeech, speechLocale, `8. Pinch Gesture: “${waterSpeech}”`);
-      if (waterSymptom && !activeSymptoms.includes(waterSymptom.name)) {
-        const updatedRecord = await addSymptom(waterSymptom.name);
-        setActiveSymptoms(updatedRecord.symptoms || []);
-        const triageResult = await triageSymptoms(updatedRecord.symptoms || []);
-        await setTriageResult(triageResult);
-        setUrgency(triageResult.urgency);
-        setAiSummary(triageResult.aiSummary);
-      }
-      await setQuickAlert('Pinch Gesture: Drinking Water Requested');
-      setAlertNotification({
-        tier: 'calm',
-        text: '8. Pinch Gesture detected: Drinking water requested (Routine / Green).'
-      });
-    }
+    const tier = (gesture.urgency || 'Low').toLowerCase();
+    setAlertNotification({
+      tier: tier === 'medium' ? 'orange' : 'calm',
+      text: wasSelected
+        ? `${gesture.number}. ${gesture.name}: Unselected “${matchedSymptom.name}”.`
+        : `${gesture.number}. ${gesture.name}: Selected “${matchedSymptom.name}” (${
+            tier === 'high' ? 'Red Alert' : tier === 'medium' ? 'Orange Alert' : 'Green Routine'
+          }).`
+    });
   };
 
   const urgencyKey = (urgency || 'Low').toLowerCase();
@@ -595,6 +493,7 @@ export default function Patient() {
             <WebcamGesture
               onGestureDetected={handleGestureDetected}
               highlightedSymptomName={symptomsData[highlightedIndex]?.name}
+              activeSymptoms={activeSymptoms}
             />
           </section>
         </div>

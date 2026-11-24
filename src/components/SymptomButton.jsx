@@ -1,11 +1,12 @@
 /**
- * SymptomButton.jsx - Accessible Select/Unselect Symptom Tile with Tiered Alert Visuals
+ * SymptomButton.jsx - Accessible Select/Unselect Symptom Tile with Gesture Shortcut & Tiered Alert Visuals
  * Owner: Dev 1 & Member 4 (UI)
  */
 
 import React from 'react';
 import { getSymptomText } from '../lib/translations.js';
 import { getSymptomRule } from '../lib/triage.js';
+import { getGestureForSymptom } from '../lib/gestures.js';
 import Icon from './Icons.jsx';
 
 const SYMPTOM_VISUALS = {
@@ -30,6 +31,7 @@ export default function SymptomButton({
   const visual = SYMPTOM_VISUALS[symptom.id] || { icon: 'heart', color: '#EAF3ED' };
   const rule = getSymptomRule(symptom.id) || getSymptomRule(symptom.name);
   const tier = (rule?.urgency || symptom.urgencyFallback || 'Low').toLowerCase();
+  const mappedGesture = getGestureForSymptom(symptom.id);
 
   const isEnglish = currentLangCode === 'en';
   const primaryLabel = symptom.name;
@@ -42,9 +44,12 @@ export default function SymptomButton({
       style={{ '--k': visual.color }}
       onClick={() => onClick(symptom)}
       aria-pressed={isSelected}
-      title={isSelected ? `Tap to unselect ${symptom.name}` : `Tap to select ${symptom.name}`}
+      title={
+        isSelected
+          ? `Tap to unselect ${symptom.name}${mappedGesture ? ` · Gesture: ${mappedGesture.shortName}` : ''}`
+          : `Tap to select ${symptom.name}${mappedGesture ? ` · Gesture: ${mappedGesture.shortName}` : ''}`
+      }
     >
-      {isHighlighted && <span className="tile-focus-pill">Focus</span>}
       <span className="badge">
         <Icon name={visual.icon} />
       </span>
@@ -52,6 +57,9 @@ export default function SymptomButton({
         <b>{primaryLabel}</b>
         {secondaryLabel && secondaryLabel !== primaryLabel && (
           <small className="hi">{secondaryLabel}</small>
+        )}
+        {mappedGesture && (
+          <span className="tile-gesture-hint">{mappedGesture.shortName}</span>
         )}
       </span>
       {isSelected && (

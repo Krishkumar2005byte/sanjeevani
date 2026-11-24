@@ -1,16 +1,16 @@
 /**
- * gestures.js - Real-Time MediaPipe 8-Gesture Patient Hand Recognition
+ * gestures.js - Real-Time MediaPipe 8-Gesture -> 8-Problem Mapping
  * Owner: Dev 1 & Member 4 (UI / Gesture Set of 8)
  *
- * Supported Camera-Tracking Patient Hand Gestures (Set of 8):
- * 1. Open Palm               -> Hand Detected / Ready for Input (Low / Green)
- * 2. Clenched Fist           -> Emergency Help / Severe Pain (High / Red Alert)
- * 3. Thumbs Up               -> Select / Confirm Focused Symptom
- * 4. Thumbs Down             -> Unselect / Previous Symptom
- * 5. Index Finger Point      -> Highlight Next Symptom
- * 6. V-Sign (Victory/Peace)  -> Call Doctor / Consultation (Medium / Orange Alert)
- * 7. "Okay" Sign (Ring)      -> I am Okay / Feeling Better (Low / Green Calm)
- * 8. Pinch Gesture           -> Need Water / Hydration (Low / Green Comfort)
+ * Each of the 8 camera-tracking patient hand gestures is assigned 1-to-1 to a specific problem:
+ * 1. Open Palm              -> Breathing Trouble (Red / High Alert)
+ * 2. Clenched Fist          -> Chest Pain (Red / High Alert)
+ * 3. Thumbs Up              -> High Fever (Orange / Medium Alert)
+ * 4. Thumbs Down            -> Dizziness (Orange / Medium Alert)
+ * 5. Index Finger Point     -> Headache (Orange / Medium Alert)
+ * 6. V-Sign (Victory/Peace) -> Nausea (Orange / Medium Alert)
+ * 7. “Okay” Sign (Ring)     -> Body Pain (Orange / Medium Alert)
+ * 8. Pinch Gesture          -> Need Water (Green / Low Routine)
  */
 
 export const GESTURE_DEFINITIONS = {
@@ -18,83 +18,113 @@ export const GESTURE_DEFINITIONS = {
     id: 'open_palm',
     number: 1,
     name: 'Open Palm',
+    shortName: '1. Open Palm',
     emoji: '🖐️',
-    label: 'Hand Detected · Ready',
-    spoken: '',
-    urgency: 'Low',
-    action: 'hand_detected'
+    symptomId: 'breathing-trouble',
+    problemName: 'Breathing Trouble',
+    label: 'Breathing Trouble · Red Alert',
+    spoken: 'सांस लेने में तकलीफ़ हो रही है',
+    urgency: 'High',
+    action: 'symptom'
   },
   fist: {
     id: 'fist',
     number: 2,
     name: 'Clenched Fist',
+    shortName: '2. Clenched Fist',
     emoji: '✊',
-    label: 'Emergency Help (Red Alert)',
-    spoken: 'आपातकालीन सहायता की आवश्यकता है! तुरंत मदद करें!',
+    symptomId: 'chest-pain',
+    problemName: 'Chest Pain',
+    label: 'Chest Pain · Red Alert',
+    spoken: 'सीने में दर्द हो रहा है',
     urgency: 'High',
-    action: 'emergency'
+    action: 'symptom'
   },
   thumbs_up: {
     id: 'thumbs_up',
     number: 3,
     name: 'Thumbs Up',
+    shortName: '3. Thumbs Up',
     emoji: '👍',
-    label: 'Select / Toggle Focused Symptom',
-    spoken: '',
-    urgency: 'Low',
-    action: 'confirm_symptom'
+    symptomId: 'high-fever',
+    problemName: 'High Fever',
+    label: 'High Fever · Orange Alert',
+    spoken: 'मुझे तेज़ बुखार है',
+    urgency: 'Medium',
+    action: 'symptom'
   },
   thumbs_down: {
     id: 'thumbs_down',
     number: 4,
     name: 'Thumbs Down',
+    shortName: '4. Thumbs Down',
     emoji: '👎',
-    label: 'Unselect / Previous Symptom',
-    spoken: '',
-    urgency: 'Low',
-    action: 'unselect_or_prev'
+    symptomId: 'dizziness',
+    problemName: 'Dizziness',
+    label: 'Dizziness · Orange Alert',
+    spoken: 'मुझे चक्कर आ रहे हैं',
+    urgency: 'Medium',
+    action: 'symptom'
   },
   pointing_up: {
     id: 'pointing_up',
     number: 5,
     name: 'Index Finger Point',
+    shortName: '5. Index Point',
     emoji: '☝️',
-    label: 'Highlight Next Symptom',
-    spoken: '',
-    urgency: 'Low',
-    action: 'next_symptom'
+    symptomId: 'headache',
+    problemName: 'Headache',
+    label: 'Headache · Orange Alert',
+    spoken: 'मुझे सिरदर्द हो रहा है',
+    urgency: 'Medium',
+    action: 'symptom'
   },
   peace_sign: {
     id: 'peace_sign',
     number: 6,
     name: 'V-Sign (Peace)',
+    shortName: '6. V-Sign',
     emoji: '✌️',
-    label: 'Call Doctor (Orange Alert)',
-    spoken: 'कृपया डॉक्टर को बुलाएं',
+    symptomId: 'nausea',
+    problemName: 'Nausea',
+    label: 'Nausea · Orange Alert',
+    spoken: 'मेरा जी मिचला रहा है',
     urgency: 'Medium',
-    action: 'doctor'
+    action: 'symptom'
   },
   ok_sign: {
     id: 'ok_sign',
     number: 7,
     name: '“Okay” Sign (Ring)',
+    shortName: '7. Okay Sign',
     emoji: '👌',
-    label: 'I am Okay / Calm',
-    spoken: 'मैं ठीक हूँ',
-    urgency: 'Low',
-    action: 'okay'
+    symptomId: 'body-pain',
+    problemName: 'Body Pain',
+    label: 'Body Pain · Orange Alert',
+    spoken: 'मुझे बदन दर्द हो रहा है',
+    urgency: 'Medium',
+    action: 'symptom'
   },
   pinch: {
     id: 'pinch',
     number: 8,
     name: 'Pinch Gesture',
+    shortName: '8. Pinch',
     emoji: '🤏',
-    label: 'Need Water (Routine)',
+    symptomId: 'need-water',
+    problemName: 'Need Water',
+    label: 'Need Water · Routine',
     spoken: 'मुझे पानी चाहिए',
     urgency: 'Low',
-    action: 'water'
+    action: 'symptom'
   }
 };
+
+export function getGestureForSymptom(symptomId) {
+  return (
+    Object.values(GESTURE_DEFINITIONS).find((g) => g.symptomId === symptomId) || null
+  );
+}
 
 function distance2D(a, b) {
   const dx = a.x - b.x;

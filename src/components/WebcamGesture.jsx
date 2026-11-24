@@ -23,7 +23,11 @@ const COOLDOWN_MS = 2500;
 const NORMAL_HOLD_FRAMES = 6;
 const EMERGENCY_HOLD_FRAMES = 12;
 
-export default function WebcamGesture({ onGestureDetected, highlightedSymptomName }) {
+export default function WebcamGesture({
+  onGestureDetected,
+  highlightedSymptomName,
+  activeSymptoms = []
+}) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
@@ -552,28 +556,35 @@ export default function WebcamGesture({ onGestureDetected, highlightedSymptomNam
 
       <div className="gesture-bar">
         <span className="gesture-bar-label">
-          Camera-Tracking Patient Hand Gestures (Set of 8 · Live Camera or Tap to Test)
+          Gesture-to-Problem Guide (Set of 8 · Show on Camera or Tap to Toggle)
         </span>
         <div className="gesture-set-grid">
           {Object.values(GESTURE_DEFINITIONS)
             .sort((a, b) => (a.number || 0) - (b.number || 0))
             .map((g) => {
               const tier = (g.urgency || 'Low').toLowerCase();
+              const isProblemSelected = activeSymptoms.includes(g.problemName);
               return (
                 <button
                   key={g.id}
                   type="button"
-                  className={`gesture-item-btn ${detectedGesture?.id === g.id ? 'active' : ''}`}
+                  className={`gesture-item-btn tier-${tier} ${
+                    detectedGesture?.id === g.id || isProblemSelected ? 'active' : ''
+                  }`}
                   onClick={() => triggerGesture(g, 100)}
-                  title={`${g.number}. ${g.name} — ${g.label}`}
+                  title={`${g.number}. ${g.name} → ${g.problemName} (${g.urgency})`}
                 >
                   <span className="gesture-item-head">
                     <span className={`gesture-tier-dot dot-${tier}`} aria-hidden="true" />
                     <strong>
                       {g.number}. {g.name}
                     </strong>
+                    {isProblemSelected && <span className="gesture-active-tag">Selected</span>}
                   </span>
-                  <small>{g.label}</small>
+                  <small className="gesture-problem-line">
+                    → <b>{g.problemName}</b> ·{' '}
+                    {tier === 'high' ? 'Red Alert' : tier === 'medium' ? 'Orange Alert' : 'Green Routine'}
+                  </small>
                 </button>
               );
             })}
@@ -581,7 +592,7 @@ export default function WebcamGesture({ onGestureDetected, highlightedSymptomNam
 
         {detectedGesture && (
           <div className="gesture-detected-strip">
-            {detectedGesture.number}. {detectedGesture.name}: {detectedGesture.label} ({confidence}%
+            {detectedGesture.number}. {detectedGesture.name} → {detectedGesture.problemName} ({confidence}%
             {inCooldown ? ' · Cooldown' : ''})
           </div>
         )}
