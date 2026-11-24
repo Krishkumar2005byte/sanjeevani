@@ -551,24 +551,38 @@ export default function WebcamGesture({ onGestureDetected, highlightedSymptomNam
       </div>
 
       <div className="gesture-bar">
-        <span className="gesture-bar-label">Supported Hand Gestures (Live Camera or Quick Tap)</span>
-        <div className="chips">
-          {Object.values(GESTURE_DEFINITIONS).map((g) => (
-            <button
-              key={g.id}
-              type="button"
-              className={`chip ${detectedGesture?.id === g.id ? 'tag-active' : ''}`}
-              onClick={() => triggerGesture(g, 100)}
-              title={g.label}
-            >
-              <span>{g.name}</span>
-            </button>
-          ))}
+        <span className="gesture-bar-label">
+          Camera-Tracking Patient Hand Gestures (Set of 8 · Live Camera or Tap to Test)
+        </span>
+        <div className="gesture-set-grid">
+          {Object.values(GESTURE_DEFINITIONS)
+            .sort((a, b) => (a.number || 0) - (b.number || 0))
+            .map((g) => {
+              const tier = (g.urgency || 'Low').toLowerCase();
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  className={`gesture-item-btn ${detectedGesture?.id === g.id ? 'active' : ''}`}
+                  onClick={() => triggerGesture(g, 100)}
+                  title={`${g.number}. ${g.name} — ${g.label}`}
+                >
+                  <span className="gesture-item-head">
+                    <span className={`gesture-tier-dot dot-${tier}`} aria-hidden="true" />
+                    <strong>
+                      {g.number}. {g.name}
+                    </strong>
+                  </span>
+                  <small>{g.label}</small>
+                </button>
+              );
+            })}
         </div>
 
         {detectedGesture && (
           <div className="gesture-detected-strip">
-            {detectedGesture.name}: {detectedGesture.label} ({confidence}%{inCooldown ? ' · Cooldown' : ''})
+            {detectedGesture.number}. {detectedGesture.name}: {detectedGesture.label} ({confidence}%
+            {inCooldown ? ' · Cooldown' : ''})
           </div>
         )}
       </div>

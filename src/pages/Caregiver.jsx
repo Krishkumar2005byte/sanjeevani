@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import {
   subscribeToPatient,
   clearQuickAlert,
+  clearEmergency,
   bookAppointment
 } from '../lib/patientService.js';
 import doctorsData from '../data/doctors.json';
@@ -93,6 +94,10 @@ export default function Caregiver() {
     return matchesLang && matchesSpec;
   });
 
+  const urgencyKey = (patient.urgency || 'Low').toLowerCase();
+  const isRedAlert = isEmergency || urgencyKey === 'high';
+  const isOrangeAlert = !isRedAlert && urgencyKey === 'medium';
+
   return (
     <div className="page-wrap">
       <h1 className="page-h1">Caregiver live view</h1>
@@ -101,11 +106,11 @@ export default function Caregiver() {
       </p>
 
       {patient.quickAlert && (
-        <div className="alert-banner assist" role="alert">
+        <div className="alert-banner calm" role="status">
           <div className="alert-banner-left">
-            <Icon name="alert" />
+            <Icon name="info" />
             <span>
-              <strong>Live patient request:</strong> {patient.name} requested <strong>{patient.quickAlert}</strong>
+              <strong>Patient request:</strong> {patient.name} requested <strong>{patient.quickAlert}</strong>
             </span>
           </div>
           <button
@@ -119,12 +124,45 @@ export default function Caregiver() {
         </div>
       )}
 
-      {(isEmergency || symptoms.length > 0) && (
-        <div className={`alert-banner ${isEmergency ? 'emergency' : 'assist'}`} role="alert">
+      {/* RED CRITICAL ALERT (Emergency Help or High Urgency symptoms only) */}
+      {isRedAlert && (
+        <div className="alert-banner emergency" role="alert">
           <div className="alert-banner-left">
             <Icon name="siren" />
             <span>
-              <strong>ALERT:</strong> {patient.name} needs attention {isEmergency ? '(URGENT)' : '(symptoms updated)'}
+              <strong>RED ALERT (CRITICAL):</strong> {patient.name} needs immediate attention{' '}
+              {isEmergency ? '(Emergency Help triggered)' : '(Critical symptom reported)'}
+            </span>
+          </div>
+          <div className="profile-actions">
+            <button
+              type="button"
+              className="btn subtle sm"
+              onClick={openDoctorPicker}
+            >
+              <Icon name="steth" />
+              Consult a doctor
+            </button>
+            {isEmergency && (
+              <button
+                type="button"
+                className="btn subtle sm"
+                onClick={() => clearEmergency()}
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ORANGE MODERATE ALERT (Medium Urgency symptoms like High Fever, Headache, Nausea, Dizziness, Body Pain) */}
+      {isOrangeAlert && (
+        <div className="alert-banner orange" role="alert">
+          <div className="alert-banner-left">
+            <Icon name="alert" />
+            <span>
+              <strong>ORANGE ALERT (MODERATE):</strong> {patient.name} reported moderate symptoms — check in and consult a doctor if persistent.
             </span>
           </div>
           <button

@@ -1,5 +1,6 @@
 /**
- * Patient.jsx - Two-Column Editorial Patient Voiceboard & Sticky Emergency Strip
+ * Patient.jsx - Two-Column Editorial Patient Voiceboard with Select/Unselect Symptoms,
+ * 3-Tier Urgency Alerts (Green / Orange / Red), and Full 8-Gesture Camera Control
  * Owner: Dev 1 & Member 4 (UI)
  */
 
@@ -9,9 +10,12 @@ import languages from '../data/languages.json';
 import { speak } from '../lib/speech.js';
 import {
   getPatient,
+  toggleSymptom,
   addSymptom,
+  clearSymptoms,
   setTriageResult,
   triggerEmergency,
+  clearEmergency,
   updatePatientProfile,
   setQuickAlert
 } from '../lib/patientService.js';
@@ -154,6 +158,7 @@ export default function Patient() {
     }
   };
 
+  // Toggle symptom selection (tap to select, tap again to unselect) & recalculate 3-tier urgency
   const handleSymptomClick = async (symptom) => {
     const clickedIdx = symptomsData.findIndex((s) => s.id === symptom.id);
     if (clickedIdx !== -1) {
@@ -163,16 +168,46 @@ export default function Patient() {
     const textInfo = getSymptomText(symptom.id, langCode);
     const speechLocale = currentLangObj.speechLocale || 'hi-IN';
 
-    triggerSpeech(
-      textInfo.spoken,
-      speechLocale,
-      `Speaking: “${symptom.name}” (${textInfo.label})`
-    );
+    const updatedRecord = await toggleSymptom(symptom.name);
+    const nextSymptoms = updatedRecord.symptoms || [];
+    setActiveSymptoms(nextSymptoms);
 
-    const updatedRecord = await addSymptom(symptom.name);
-    setActiveSymptoms(updatedRecord.symptoms || []);
+    if (updatedRecord.selected) {
+      triggerSpeech(
+        textInfo.spoken,
+        speechLocale,
+        `Speaking: “${symptom.name}” (${textInfo.label})`
+      );
+    } else {
+      setSpeakingText(`Unselected: ${symptom.name}`);
+      setIsSpeaking(false);
+    }
 
-    const triageResult = await triageSymptoms(updatedRecord.symptoms);
+    const triageResult = await triageSymptoms(nextSymptoms);
+    // If no critical symptoms remain and emergency wasn't manually locked, sync down cleanly
+    if (nextSymptoms.length === 0 && emergencyActive) {
+      await clearEmergency();
+      setEmergencyActive(false);
+    }
+    await setTriageResult(triageResult);
+    setUrgency(triageResult.urgency);
+    setAiSummary(triageResult.aiSummary);
+  };
+
+  const handleClearAllSymptoms = async () => {
+    await clearSymptoms();
+    setActiveSymptoms([]);
+    setUrgency('Low');
+    setEmergencyActive(false);
+    setAiSummary('Patient is resting comfortably. No symptoms reported.');
+    setSpeakingText('Cleared all selected symptoms.');
+    setIsSpeaking(false);
+  };
+
+  const handleDismissEmergency = async () => {
+    await clearEmergency();
+    setEmergencyActive(false);
+    const triageResult = await triageSymptoms(activeSymptoms);
     await setTriageResult(triageResult);
     setUrgency(triageResult.urgency);
     setAiSummary(triageResult.aiSummary);
@@ -184,19 +219,19 @@ export default function Patient() {
 
     if (phrase.id === 'washroom') {
       await setQuickAlert('Washroom Urgency (Just now)');
-      setAlertNotification('Washroom assistance requested. Alert sent to caregiver.');
+      setAlertNotification({ tier: 'calm', text: 'Washroom assistance requested. Caregiver notified.' });
     } else if (phrase.id === 'water') {
       await setQuickAlert('Drinking Water Requested (Just now)');
-      setAlertNotification('Drinking water requested. Alert sent to caregiver.');
+      setAlertNotification({ tier: 'calm', text: 'Drinking water requested. Caregiver notified.' });
     } else if (phrase.id === 'sit_up') {
       await setQuickAlert('Mobility Support: Help Sit Up');
-      setAlertNotification('Bed support requested. Alert sent to caregiver.');
+      setAlertNotification({ tier: 'calm', text: 'Bed support requested. Caregiver notified.' });
     } else if (phrase.id === 'cold') {
       await setQuickAlert('Patient Feeling Cold (Blanket needed)');
-      setAlertNotification('Warm blanket requested. Alert sent to caregiver.');
+      setAlertNotification({ tier: 'calm', text: 'Warm blanket requested. Caregiver notified.' });
     } else if (phrase.id === 'food') {
       await setQuickAlert('Patient Hungry (Meal assistance)');
-      setAlertNotification('Meal assistance requested. Alert sent to caregiver.');
+      setAlertNotification({ tier: 'calm', text: 'Meal assistance requested. Caregiver notified.' });
     }
   };
 
@@ -217,7 +252,7 @@ export default function Patient() {
     setAiSummary('EMERGENCY ALERT: Immediate caregiver and doctor assistance requested.');
   };
 
-  // Real-time MediaPipe hand gesture actions (Dev 1)
+  // Full 8-Gesture Camera Control Handler
   const handleGestureDetected = async (gesture) => {
     const speechLocale = currentLangObj.speechLocale || 'hi-IN';
     const currentSymptom = symptomsData[highlightedIndex] || symptomsData[0];
@@ -225,17 +260,55 @@ export default function Patient() {
     if (gesture.action === 'hand_detected') {
       const targetText = getSymptomText(currentSymptom.id, langCode);
       setSpeakingText(
-        `Hand detected · Highlighted: “${targetText.label}” (Thumbs Up to confirm, Point/Down for next)`
+        `Open Palm · Focused: “${targetText.label}” (Thumbs Up to toggle, Point for next)`
       );
-      setAlertNotification(
-        `Hand detected! Show Thumbs Up to select “${currentSymptom.name}”, or Point/Thumbs Down for next.`
-      );
+      setAlertNotification({
+        tier: 'calm',
+        text: `1. Open Palm detected · Focused on “${currentSymptom.name}”. Show Thumbs Up to select/unselect.`
+      });
+      return;
+    }
+
+    if (gesture.action === 'emergency') {
+      await handleEmergencyClick();
       return;
     }
 
     if (gesture.action === 'confirm_symptom') {
       await handleSymptomClick(currentSymptom);
-      setAlertNotification(`Confirmed symptom via gesture: ${currentSymptom.name}`);
+      const wasSelected = activeSymptoms.includes(currentSymptom.name);
+      setAlertNotification({
+        tier: 'calm',
+        text: wasSelected
+          ? `3. Thumbs Up: Unselected “${currentSymptom.name}”.`
+          : `3. Thumbs Up: Selected “${currentSymptom.name}”.`
+      });
+      return;
+    }
+
+    if (gesture.action === 'unselect_or_prev') {
+      if (activeSymptoms.includes(currentSymptom.name)) {
+        await handleSymptomClick(currentSymptom);
+        setAlertNotification({
+          tier: 'calm',
+          text: `4. Thumbs Down: Unselected “${currentSymptom.name}”.`
+        });
+      } else {
+        const prevIndex = (highlightedIndex - 1 + symptomsData.length) % symptomsData.length;
+        const prevSymptom = symptomsData[prevIndex];
+        const prevText = getSymptomText(prevSymptom.id, langCode);
+        setHighlightedIndex(prevIndex);
+        triggerSpeech(
+          prevText.label,
+          speechLocale,
+          `Focused previous symptom: “${prevText.label}” (${prevSymptom.name})`,
+          { playChime: false }
+        );
+        setAlertNotification({
+          tier: 'calm',
+          text: `4. Thumbs Down: Moved focus back to “${prevSymptom.name}”.`
+        });
+      }
       return;
     }
 
@@ -247,26 +320,60 @@ export default function Patient() {
       triggerSpeech(
         nextText.label,
         speechLocale,
-        `Highlighted next symptom: “${nextText.label}” (${nextSymptom.name})`,
+        `Focused next symptom: “${nextText.label}” (${nextSymptom.name})`,
         { playChime: false }
       );
-      setAlertNotification(
-        `${gesture.name}: Moved focus to “${nextSymptom.name}”. Show Thumbs Up to select.`
-      );
-      return;
-    }
-
-    if (gesture.action === 'emergency') {
-      await handleEmergencyClick();
+      setAlertNotification({
+        tier: 'calm',
+        text: `5. Index Point: Moved focus to “${nextSymptom.name}”. Show Thumbs Up to select.`
+      });
       return;
     }
 
     if (gesture.action === 'doctor') {
-      triggerSpeech(gesture.spoken, speechLocale, `Gesture (${gesture.name}): “${gesture.spoken}”`);
-      await setQuickAlert('Hand Gesture: Patient requested Doctor');
-      setAlertNotification('Hand gesture detected: Doctor consultation requested.');
+      triggerSpeech(gesture.spoken, speechLocale, `6. V-Sign (Peace): “${gesture.spoken}”`);
+      await setQuickAlert('V-Sign Gesture: Patient requested Doctor Consultation');
+      setAlertNotification({
+        tier: 'orange',
+        text: '6. V-Sign detected: Orange alert — Doctor consultation requested.'
+      });
+      return;
+    }
+
+    if (gesture.action === 'okay') {
+      const okSpeech = langCode === 'hi' ? 'मैं ठीक हूँ' : 'I am okay, feeling better';
+      triggerSpeech(okSpeech, speechLocale, `7. “Okay” Sign: “${okSpeech}”`);
+      if (emergencyActive) {
+        await handleDismissEmergency();
+      }
+      setAlertNotification({
+        tier: 'calm',
+        text: '7. “Okay” Sign detected: Patient signaled they are okay / comfortable.'
+      });
+      return;
+    }
+
+    if (gesture.action === 'water') {
+      const waterSymptom = symptomsData.find((s) => s.id === 'need-water');
+      const waterSpeech = langCode === 'hi' ? 'मुझे पानी चाहिए' : 'I need drinking water';
+      triggerSpeech(waterSpeech, speechLocale, `8. Pinch Gesture: “${waterSpeech}”`);
+      if (waterSymptom && !activeSymptoms.includes(waterSymptom.name)) {
+        const updatedRecord = await addSymptom(waterSymptom.name);
+        setActiveSymptoms(updatedRecord.symptoms || []);
+        const triageResult = await triageSymptoms(updatedRecord.symptoms || []);
+        await setTriageResult(triageResult);
+        setUrgency(triageResult.urgency);
+        setAiSummary(triageResult.aiSummary);
+      }
+      await setQuickAlert('Pinch Gesture: Drinking Water Requested');
+      setAlertNotification({
+        tier: 'calm',
+        text: '8. Pinch Gesture detected: Drinking water requested (Routine / Green).'
+      });
     }
   };
+
+  const urgencyKey = (urgency || 'Low').toLowerCase();
 
   return (
     <>
@@ -300,29 +407,53 @@ export default function Patient() {
 
       {/* Main Two-Column Patient Workspace */}
       <div className="page-wrap wide">
-        {emergencyActive && (
+        {/* RED CRITICAL ALERT BANNER (Emergency or High Urgency symptoms only) */}
+        {(emergencyActive || urgencyKey === 'high') && (
           <div className="alert-banner emergency" role="alert">
             <div className="alert-banner-left">
               <Icon name="siren" />
               <span>
-                <strong>EMERGENCY BROADCAST ACTIVE:</strong> Caregiver and medical team alerted.
+                <strong>RED ALERT (CRITICAL):</strong>{' '}
+                {emergencyActive
+                  ? 'Emergency broadcast active — caregiver and medical team alerted.'
+                  : 'High-priority symptom reported — immediate medical attention recommended.'}
               </span>
             </div>
-            <button
-              type="button"
-              className="btn subtle sm"
-              onClick={() => setEmergencyActive(false)}
-            >
-              Dismiss
-            </button>
+            {emergencyActive && (
+              <button
+                type="button"
+                className="btn subtle sm"
+                onClick={handleDismissEmergency}
+              >
+                Dismiss
+              </button>
+            )}
           </div>
         )}
 
-        {alertNotification && (
-          <div className="alert-banner assist" role="alert">
+        {/* ORANGE MODERATE ALERT BANNER (Medium Urgency symptoms — never for Need Water) */}
+        {!emergencyActive && urgencyKey === 'medium' && (
+          <div className="alert-banner orange" role="alert">
             <div className="alert-banner-left">
               <Icon name="alert" />
-              <strong>{alertNotification}</strong>
+              <span>
+                <strong>ORANGE ALERT (MODERATE):</strong> Moderate symptoms reported — caregiver notified to check in soon.
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Subtle Feedback Banner for Gestures / Routine Requests */}
+        {alertNotification && (
+          <div
+            className={`alert-banner ${
+              alertNotification.tier === 'orange' ? 'orange' : 'calm'
+            }`}
+            role="status"
+          >
+            <div className="alert-banner-left">
+              <Icon name={alertNotification.tier === 'orange' ? 'alert' : 'check'} />
+              <span>{alertNotification.text}</span>
             </div>
             <button
               type="button"
@@ -335,11 +466,23 @@ export default function Patient() {
         )}
 
         <div className="pgrid">
-          {/* Left Column: 2x4 Symptom Grid */}
+          {/* Left Column: 2x4 Select/Unselect Symptom Grid */}
           <section>
-            <h2 className="sec">
-              Tap what you feel / <span className="hi">जो महसूस हो उसे छुएं</span>
-            </h2>
+            <div className="sevhead" style={{ marginBottom: '12px' }}>
+              <h2 className="sec" style={{ margin: 0 }}>
+                Tap what you feel / <span className="hi">जो महसूस हो उसे छुएं</span>
+              </h2>
+              {activeSymptoms.length > 0 && (
+                <button
+                  type="button"
+                  className="btn subtle xs"
+                  onClick={handleClearAllSymptoms}
+                >
+                  <Icon name="x" />
+                  Clear all ({activeSymptoms.length})
+                </button>
+              )}
+            </div>
             <div className="sym">
               {symptomsData.map((symptom, index) => (
                 <SymptomButton
@@ -352,9 +495,13 @@ export default function Patient() {
                 />
               ))}
             </div>
+            <p className="empty-subtext" style={{ margin: '10px 0 0', fontSize: '12.5px' }}>
+              Tap any card to select it, or tap again to unselect.{' '}
+              <strong>Green</strong> = routine comfort · <strong>Orange</strong> = moderate alert · <strong>Red</strong> = urgent alert.
+            </p>
           </section>
 
-          {/* Right Column: Phrases, Speech Feedback, AI Urgency, Camera */}
+          {/* Right Column: Phrases, Speech Feedback, AI Urgency, 8-Gesture Camera */}
           <section>
             <h2 className="sec">Quick Patient Phrases</h2>
             <div className="chips">
@@ -420,21 +567,31 @@ export default function Patient() {
                 {activeSymptoms.length > 0 && (
                   <div className="chips" style={{ marginTop: '10px' }}>
                     {activeSymptoms.map((s) => (
-                      <span key={s} className="chip tag-active">
-                        {s}
-                      </span>
+                      <button
+                        key={s}
+                        type="button"
+                        className="chip tag-active"
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => {
+                          const symObj = symptomsData.find((item) => item.name === s);
+                          if (symObj) handleSymptomClick(symObj);
+                        }}
+                        title={`Click to unselect ${s}`}
+                      >
+                        {s} ×
+                      </button>
                     ))}
                   </div>
                 )}
 
                 <p style={{ margin: '10px 0 0', fontSize: '14px', color: 'var(--ink)' }}>
-                  {aiSummary || 'Patient is resting. No critical symptoms reported.'}
+                  {aiSummary || 'Patient is resting comfortably. No symptoms reported.'}
                 </p>
               </div>
               <WarningBox message="AI guidance only, consult a doctor." />
             </div>
 
-            <h2 className="sec mt">Camera Integration</h2>
+            <h2 className="sec mt">Camera Integration (8 Hand Gestures)</h2>
             <WebcamGesture
               onGestureDetected={handleGestureDetected}
               highlightedSymptomName={symptomsData[highlightedIndex]?.name}

@@ -164,7 +164,7 @@ export function subscribeToPatient(callback) {
  */
 export async function addSymptom(symptom) {
   const current = await getPatient();
-  const symptoms = current.symptoms || [];
+  const symptoms = [...(current.symptoms || [])];
 
   if (!symptoms.includes(symptom)) {
     symptoms.push(symptom);
@@ -182,6 +182,92 @@ export async function addSymptom(symptom) {
     return { ...current, ...updates };
   } catch (e) {
     console.warn('[patientService] Firestore addSymptom error, saving locally:', e);
+    return saveLocalPatient({ ...current, ...updates });
+  }
+}
+
+/**
+ * Toggles a symptom (selects if inactive, unselects if already active).
+ * Returns the updated record plus { selected: boolean }.
+ */
+export async function toggleSymptom(symptom) {
+  const current = await getPatient();
+  const existing = current.symptoms || [];
+  const isCurrentlySelected = existing.includes(symptom);
+
+  const symptoms = isCurrentlySelected
+    ? existing.filter((s) => s !== symptom)
+    : [...existing, symptom];
+
+  const updates = {
+    symptoms,
+    ...(symptoms.length === 0 ? { emergency: false } : {}),
+    updatedAt: new Date().toISOString()
+  };
+
+  if (!db) {
+    const saved = saveLocalPatient({ ...current, ...updates });
+    return { ...saved, selected: !isCurrentlySelected };
+  }
+
+  try {
+    const docRef = doc(db, COLLECTION_NAME, DOC_ID);
+    await updateDoc(docRef, updates);
+    return { ...current, ...updates, selected: !isCurrentlySelected };
+  } catch (e) {
+    console.warn('[patientService] Firestore toggleSymptom error, saving locally:', e);
+    const saved = saveLocalPatient({ ...current, ...updates });
+    return { ...saved, selected: !isCurrentlySelected };
+  }
+}
+
+/**
+ * Clears all active symptoms and resets urgency/emergency to calm baseline.
+ */
+export async function clearSymptoms() {
+  const current = await getPatient();
+  const updates = {
+    symptoms: [],
+    urgency: 'Low',
+    emergency: false,
+    aiSummary: 'Patient is resting comfortably. No symptoms reported.',
+    updatedAt: new Date().toISOString()
+  };
+
+  if (!db) {
+    return saveLocalPatient({ ...current, ...updates });
+  }
+
+  try {
+    const docRef = doc(db, COLLECTION_NAME, DOC_ID);
+    await updateDoc(docRef, updates);
+    return { ...current, ...updates };
+  } catch (e) {
+    console.warn('[patientService] Firestore clearSymptoms error, saving locally:', e);
+    return saveLocalPatient({ ...current, ...updates });
+  }
+}
+
+/**
+ * Clears an active emergency flag without wiping symptoms.
+ */
+export async function clearEmergency() {
+  const current = await getPatient();
+  const updates = {
+    emergency: false,
+    updatedAt: new Date().toISOString()
+  };
+
+  if (!db) {
+    return saveLocalPatient({ ...current, ...updates });
+  }
+
+  try {
+    const docRef = doc(db, COLLECTION_NAME, DOC_ID);
+    await updateDoc(docRef, updates);
+    return { ...current, ...updates };
+  } catch (e) {
+    console.warn('[patientService] Firestore clearEmergency error, saving locally:', e);
     return saveLocalPatient({ ...current, ...updates });
   }
 }
