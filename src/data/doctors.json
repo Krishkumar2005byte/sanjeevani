@@ -1,0 +1,66 @@
+[
+  {
+    "id": "doc-1",
+    "name": "Dr. Anjali Sharma",
+    "specialty": "Cardiologist",
+    "languages": ["Hindi", "English", "Punjabi", "Dogri", "Haryanvi"],
+    "availableTime": "Today, 4:30 PM",
+    "initial": "A"
+  },
+  {
+    "id": "doc-2",
+    "name": "Dr. Ravi Iyer",
+    "specialty": "General Physician",
+    "languages": ["Tamil", "English", "Hindi", "Malayalam", "Kannada"],
+    "availableTime": "Today, 3:00 PM",
+    "initial": "R"
+  },
+  {
+    "id": "doc-3",
+    "name": "Dr. Meera Singh",
+    "specialty": "Cardiologist",
+    "languages": ["Hindi", "English", "Bihari (Bhojpuri)", "Maithili", "Magahi"],
+    "availableTime": "Today, 5:45 PM",
+    "initial": "M"
+  },
+  {
+    "id": "doc-4",
+    "name": "Dr. Arjun Das",
+    "specialty": "Pulmonologist",
+    "languages": ["Bengali", "Hindi", "English", "Assamese", "Odia", "Manipuri (Meitei)", "Bodo"],
+    "availableTime": "Today, 6:15 PM",
+    "initial": "A"
+  },
+  {
+    "id": "doc-5",
+    "name": "Dr. Fatima Khan",
+    "specialty": "General Physician",
+    "languages": ["Urdu", "Hindi", "English", "Kashmiri", "Sindhi"],
+    "availableTime": "Today, 6:45 PM",
+    "initial": "F"
+  },
+  {
+    "id": "doc-6",
+    "name": "Dr. Suresh Reddy",
+    "specialty": "Neurologist",
+    "languages": ["Telugu", "Kannada", "Hindi", "English", "Tamil"],
+    "availableTime": "Today, 7:00 PM",
+    "initial": "S"
+  },
+  {
+    "id": "doc-7",
+    "name": "Dr. Sachin Kulkarni",
+    "specialty": "Gastroenterologist",
+    "languages": ["Marathi", "Konkani", "Hindi", "English", "Gujarati"],
+    "availableTime": "Today, 7:30 PM",
+    "initial": "S"
+  },
+  {
+    "id": "doc-8",
+    "name": "Dr. Bhupender Rawat",
+    "specialty": "Emergency Medicine",
+    "languages": ["Hindi", "Dogri", "Haryanvi", "Punjabi", "Marwari", "Nepali", "Sanskrit", "Santhali", "Chhattisgarhi", "English"],
+    "availableTime": "Today, 8:00 PM",
+    "initial": "B"
+  }
+]

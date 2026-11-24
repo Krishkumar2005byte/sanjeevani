@@ -1,0 +1,50 @@
+[
+  {
+    "id": "chest-pain",
+    "name": "Chest Pain",
+    "icon": "💔",
+    "urgencyFallback": "High"
+  },
+  {
+    "id": "high-fever",
+    "name": "High Fever",
+    "icon": "🌡️",
+    "urgencyFallback": "Medium"
+  },
+  {
+    "id": "breathing-trouble",
+    "name": "Breathing Trouble",
+    "icon": "🫁",
+    "urgencyFallback": "High"
+  },
+  {
+    "id": "need-water",
+    "name": "Need Water",
+    "icon": "💧",
+    "urgencyFallback": "Low"
+  },
+  {
+    "id": "headache",
+    "name": "Headache",
+    "icon": "🤕",
+    "urgencyFallback": "Medium"
+  },
+  {
+    "id": "nausea",
+    "name": "Nausea",
+    "icon": "🤢",
+    "urgencyFallback": "Medium"
+  },
+  {
+    "id": "dizziness",
+    "name": "Dizziness",
+    "icon": "💫",
+    "urgencyFallback": "Medium"
+  },
+  {
+    "id": "body-pain",
+    "name": "Body Pain",
+    "icon": "🦴",
+    "urgencyFallback": "Medium"
+  }
+]
