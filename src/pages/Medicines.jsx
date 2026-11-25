@@ -1,347 +1,483 @@
 /**
- * Medicines.jsx - Duplicate-Free Medicine Schedule with Adherence Progress,
- * Live Pre-Add Interaction Preview, Filters & Safe Removal
- * Owner: Dev 3 & Member 4 (UI)
+ * Medicines.jsx - Medicine Tracker, Daily Adherence, Dosage & Timing (Phase 2)
+ * Owner: Dev 3 (Medicines & Daily Tracking)
+ *
+ * Features:
+ * - Complete Dosage & Timing section:
+ *   - Dosage: e.g. 500 mg, 1 tablet, 10 ml
+ *   - Frequency: Once daily, Twice daily, Three times daily, As needed
+ *   - When to take it: Morning, Afternoon, Night multi-schedule
+ *   - How to take it: Custom instructions (e.g. after meals with water)
+ * - Date-based daily tracking with per-dose "Mark as Taken" and "Undo"
+ * - Adherence overview (% taken, scheduled, remaining)
+ * - Real-time drug-drug contraindication warnings in bold red
+ * - Expandable historical dose log
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import commonMedicines from '../data/medicines.json';
 import {
   subscribeToPatient,
   addMedicine,
-  toggleMedicineTaken,
-  removeMedicine,
-  normalizeMedicineName
+  recordDoseTaken,
+  undoDose,
+  removeMedicine
 } from '../lib/patientService.js';
-import { checkInteractions } from '../lib/interactions.js';
-import { getUiText, getLangCodeByName } from '../lib/translations.js';
+import {
+  SCHEDULE_TIME_OPTIONS,
+  FREQUENCY_OPTIONS,
+  getLocalDateString,
+  getMedicineId,
+  calculateDailyAdherence,
+  getHistoricalDoseLogs
+} from '../lib/medicineUtils.js';
 import MedicineCard from '../components/MedicineCard.jsx';
-import Icon from '../components/Icons.jsx';
+
+const FREQUENCY_DEFAULT_TIMES = {
+  'Once daily': ['Morning'],
+  'Twice daily': ['Morning', 'Night'],
+  'Three times daily': ['Morning', 'Afternoon', 'Night']
+};
 
 export default function Medicines() {
   const [patient, setPatient] = useState(null);
+
+  // Add-medicine form state (Dosage, When, How)
   const [medicineName, setMedicineName] = useState('');
+  const [dosage, setDosage] = useState('');
+  const [frequency, setFrequency] = useState('Once daily');
   const [selectedTimes, setSelectedTimes] = useState(['Morning']);
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'pending' | 'taken'
-  const [timeFilter, setTimeFilter] = useState('All'); // 'All' | 'Morning' | 'Afternoon' | 'Night'
-  const [feedback, setFeedback] = useState(null); // { type: 'error' | 'success', text: string }
-  const [langCode, setLangCode] = useState(() => localStorage.getItem('sanjeevani_lang_code') || 'hi');
+  const [instructions, setInstructions] = useState('');
+
+  // UI feedback & async guard state
+  const [errorMsg, setErrorMsg] = useState('');
+  const [statusMsg, setStatusMsg] = useState('');
+  const [isBusy, setIsBusy] = useState(false);
+  const [showAdvisory, setShowAdvisory] = useState(false);
+
+  // History view state
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyFilter, setHistoryFilter] = useState('past'); // 'past' | 'all'
 
   useEffect(() => {
     const unsub = subscribeToPatient((data) => {
       setPatient(data);
-      if (data?.language) setLangCode(getLangCodeByName(data.language));
     });
-    const handleLang = (e) => {
-      if (e.detail?.code) setLangCode(e.detail.code);
-    };
-    window.addEventListener('sanjeevani_lang_changed', handleLang);
     return () => {
       if (unsub) unsub();
-      window.removeEventListener('sanjeevani_lang_changed', handleLang);
     };
   }, []);
 
-  const ui = getUiText(langCode);
+  const handleFrequencyChange = (nextFreq) => {
+    setFrequency(nextFreq);
+    if (FREQUENCY_DEFAULT_TIMES[nextFreq]) {
+      setSelectedTimes(FREQUENCY_DEFAULT_TIMES[nextFreq]);
+    }
+  };
 
-  const medicines = useMemo(() => patient?.medicines || [], [patient]);
-  const warnings = useMemo(() => patient?.warnings || [], [patient]);
-
-  // Live duplicate check while typing
-  const duplicateMatch = useMemo(() => {
-    const norm = normalizeMedicineName(medicineName);
-    if (!norm) return null;
-    return medicines.find((m) => normalizeMedicineName(m.name) === norm) || null;
-  }, [medicineName, medicines]);
-
-  // Live pre-add drug interaction preview before submitting
-  const preAddConflicts = useMemo(() => {
-    const trimmed = medicineName.trim();
-    if (!trimmed || duplicateMatch) return [];
-    const currentSet = new Set(warnings);
-    const simulated = checkInteractions([...medicines, { name: trimmed }]);
-    return simulated.filter((w) => !currentSet.has(w));
-  }, [medicineName, medicines, warnings, duplicateMatch]);
-
-  // Determine which existing medicine names are involved in active warnings
-  const conflictingDrugNames = useMemo(() => {
-    const lowerWarnings = warnings.map((w) => w.toLowerCase());
-    return new Set(
-      medicines
-        .map((m) => normalizeMedicineName(m.name))
-        .filter((norm) => norm && lowerWarnings.some((w) => w.includes(norm)))
+  const toggleScheduledTime = (time) => {
+    setSelectedTimes((prev) =>
+      prev.includes(time) ? prev.filter((t) => t !== time) : [...prev, time]
     );
-  }, [medicines, warnings]);
-
-  const toggleTime = (time) => {
-    setSelectedTimes((prev) => {
-      const next = prev.includes(time) ? prev.filter((t) => t !== time) : [...prev, time];
-      return next.length ? next : [time];
-    });
   };
 
   const handleAddMedicine = async (e) => {
     e.preventDefault();
-    const cleaned = medicineName.trim();
-    if (!cleaned) {
-      setFeedback({ type: 'error', text: 'Please enter a medicine name.' });
+    const trimmedName = medicineName.trim();
+    const trimmedDosage = dosage.trim();
+
+    if (!trimmedName) {
+      setErrorMsg('Please enter a medicine name.');
+      setStatusMsg('');
       return;
     }
 
-    if (duplicateMatch) {
-      setFeedback({
-        type: 'error',
-        text: `“${duplicateMatch.name}” is already in the schedule (${duplicateMatch.time}). Duplicate entries are not allowed.`
+    if (!trimmedDosage) {
+      setErrorMsg('Please enter a dosage (e.g., 500 mg, 1 tablet, 10 ml).');
+      setStatusMsg('');
+      return;
+    }
+
+    if (selectedTimes.length === 0) {
+      setErrorMsg('Please select at least one scheduled time (When to take it).');
+      setStatusMsg('');
+      return;
+    }
+
+    const existing = (patient?.medicines || []).map((m) => m.name.trim().toLowerCase());
+    if (existing.includes(trimmedName.toLowerCase())) {
+      setErrorMsg(`"${trimmedName}" is already in the schedule.`);
+      setStatusMsg('');
+      return;
+    }
+
+    // Preserve canonical Morning -> Afternoon -> Night ordering
+    const orderedTimes = SCHEDULE_TIME_OPTIONS.filter((t) => selectedTimes.includes(t));
+
+    setErrorMsg('');
+    setIsBusy(true);
+    try {
+      await addMedicine({
+        name: trimmedName,
+        dosage: trimmedDosage,
+        frequency,
+        times: orderedTimes,
+        instructions: instructions.trim()
       });
-      return;
+      setMedicineName('');
+      setDosage('');
+      setFrequency('Once daily');
+      setSelectedTimes(['Morning']);
+      setInstructions('');
+      setStatusMsg(`✓ Added "${trimmedName}" (${trimmedDosage}) to the daily schedule.`);
+    } finally {
+      setIsBusy(false);
     }
-
-    const result = await addMedicine({
-      name: cleaned,
-      time: selectedTimes.join(' & ')
-    });
-
-    if (result?.duplicate) {
-      setFeedback({
-        type: 'error',
-        text: `“${result.existingMedicine?.name || cleaned}” is already scheduled. Duplicate entries are not allowed.`
-      });
-      return;
-    }
-
-    setMedicineName('');
-    setFeedback({
-      type: 'success',
-      text: `Added ${cleaned} (${selectedTimes.join(' & ')}) to the daily schedule.`
-    });
-    setTimeout(() => setFeedback(null), 3500);
   };
 
-  const handleToggleTaken = async (index) => {
-    await toggleMedicineTaken(index);
+  const todayDate = getLocalDateString();
+
+  const handleMarkDoseTaken = async (medicineId, scheduledTime) => {
+    setIsBusy(true);
+    setErrorMsg('');
+    try {
+      await recordDoseTaken({ medicineId, scheduledTime, date: todayDate });
+      setStatusMsg(`✓ Recorded ${scheduledTime} dose as taken for ${todayDate}.`);
+    } finally {
+      setIsBusy(false);
+    }
   };
 
-  const handleRemove = async (index) => {
-    const target = medicines[index];
-    await removeMedicine(index);
-    if (target) {
-      setFeedback({ type: 'success', text: `Removed ${target.name} from the schedule.` });
-      setTimeout(() => setFeedback(null), 3000);
+  const handleUndoDose = async (medicineId, scheduledTime) => {
+    setIsBusy(true);
+    setErrorMsg('');
+    try {
+      await undoDose({ medicineId, scheduledTime, date: todayDate });
+      setStatusMsg(`↩ Undid ${scheduledTime} dose for ${todayDate}.`);
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const handleRemove = async (medicineId) => {
+    setIsBusy(true);
+    setErrorMsg('');
+    try {
+      await removeMedicine(medicineId);
+      setStatusMsg('Medicine removed from active schedule. Past dose history preserved.');
+    } finally {
+      setIsBusy(false);
     }
   };
 
   if (!patient) {
     return (
-      <div className="page-wrap">
+      <div className="page-container">
         <div className="loading-state">Loading medicines...</div>
       </div>
     );
   }
 
-  const totalCount = medicines.length;
-  const takenCount = medicines.filter((m) => m.taken).length;
-  const pendingCount = totalCount - takenCount;
-  const adherencePct = totalCount > 0 ? Math.round((takenCount / totalCount) * 100) : 0;
+  const medicines = patient.medicines || [];
+  const doseLogs = patient.doseLogs || [];
+  const warnings = patient.warnings || [];
 
-  const filteredMedicines = medicines
-    .map((med, originalIndex) => ({ med, originalIndex }))
-    .filter(({ med }) => {
-      if (statusFilter === 'taken' && !med.taken) return false;
-      if (statusFilter === 'pending' && med.taken) return false;
-      if (timeFilter !== 'All' && !(med.time || '').toLowerCase().includes(timeFilter.toLowerCase())) {
-        return false;
-      }
-      return true;
-    });
+  const adherence = calculateDailyAdherence(medicines, doseLogs, todayDate);
+  const historyRecords = getHistoricalDoseLogs(doseLogs, todayDate, historyFilter === 'all');
 
   return (
-    <div className="page-wrap">
-      <div className="doc-header-bar">
-        <div>
-          <h1 className="page-h1 hi">{ui.medicinesTitle}</h1>
-          <p className="sub hi" style={{ marginBottom: 0 }}>
-            {ui.medicinesSub}
-          </p>
-        </div>
-        <span className={`sev ${warnings.length > 0 ? 'high' : 'low'}`}>
-          <i aria-hidden="true" />
-          {warnings.length > 0
-            ? `${warnings.length} SAFETY ALERT${warnings.length > 1 ? 'S' : ''}`
-            : 'NO CONFLICTS'}
-        </span>
+    <div className="page-container figma-medicines-page">
+      <div className="figma-page-header">
+        <h2 className="figma-section-title">Medicines &amp; Dosage Tracker</h2>
+        <p className="figma-page-sub">
+          Daily medication schedule, exact dosage (how &amp; when to take it), and drug interaction safety checks.
+        </p>
       </div>
 
-      {/* Adherence Overview Bar */}
-      <div className="med-stats-grid">
-        <div className="card med-progress-card">
-          <div className="sevhead">
-            <span className="sevhead-label">TODAY&apos;S ADHERENCE</span>
-            <strong style={{ fontSize: '15px', color: 'var(--brand)' }}>
-              {takenCount} of {totalCount} taken ({adherencePct}%)
-            </strong>
+      {/* Daily Adherence Overview */}
+      <div className="phase2-adherence-card" aria-label="Daily medicine adherence summary">
+        <div className="phase2-adherence-top">
+          <div>
+            <span className="card-tiny-title">TODAY&apos;S DOSAGE ADHERENCE ({todayDate})</span>
+            <p className="phase2-adherence-sub">
+              Doses recorded today. Mark each dose as taken when administered.
+            </p>
           </div>
-          <div className="progress-track" aria-label={`Medication adherence ${adherencePct}%`}>
-            <div className="progress-fill" style={{ width: `${adherencePct}%` }} />
+          <div className="phase2-adherence-percent" aria-label={`Daily adherence ${adherence.percentage} percent`}>
+            {adherence.percentage}%
           </div>
         </div>
 
-        <div className="card med-stat-mini">
-          <span className="sevhead-label">PENDING</span>
-          <strong className="stat-num" style={{ color: pendingCount > 0 ? 'var(--amb-ink)' : 'var(--ok)' }}>
-            {pendingCount}
-          </strong>
+        <div className="phase2-progress-track" role="progressbar" aria-valuenow={adherence.percentage} aria-valuemin={0} aria-valuemax={100}>
+          <div className="phase2-progress-fill" style={{ width: `${adherence.percentage}%` }} />
         </div>
 
-        <div className="card med-stat-mini">
-          <span className="sevhead-label">COMPLETED</span>
-          <strong className="stat-num" style={{ color: 'var(--ok)' }}>
-            {takenCount}
-          </strong>
+        <div className="phase2-adherence-stats">
+          <div className="adherence-stat-box">
+            <span className="stat-value">{adherence.totalScheduled}</span>
+            <span className="stat-label">Total Doses</span>
+          </div>
+          <div className="adherence-stat-box">
+            <span className="stat-value stat-green">{adherence.dosesTaken}</span>
+            <span className="stat-label">Taken</span>
+          </div>
+          <div className="adherence-stat-box">
+            <span className="stat-value">{adherence.dosesRemaining}</span>
+            <span className="stat-label">Remaining</span>
+          </div>
         </div>
       </div>
 
-      {/* Add Medicine Card with Duplicate Protection & Live Interaction Preview */}
-      <div className="card mt">
-        <form onSubmit={handleAddMedicine} className="add-row">
-          <input
-            type="text"
-            list="figma-med-list"
-            placeholder="Add medicine, e.g. Aspirin, Warfarin, Paracetamol"
-            aria-label="Medicine name"
-            value={medicineName}
-            onChange={(e) => {
-              setMedicineName(e.target.value);
-              if (feedback) setFeedback(null);
-            }}
-          />
-          <datalist id="figma-med-list">
-            {commonMedicines.map((m) => (
-              <option key={m} value={m} />
-            ))}
-          </datalist>
+      {/* Add Medicine & Dosage Form */}
+      <div className="figma-add-med-card">
+        <h3 className="section-small-title" style={{ marginBottom: '12px' }}>
+          ➕ Add Medication (Dosage, How &amp; When To Take)
+        </h3>
+        <form onSubmit={handleAddMedicine} className="phase2-med-form">
+          <div className="phase2-form-grid">
+            <div className="phase2-field">
+              <label htmlFor="med-name-input" className="phase2-label">
+                Medicine Name <span aria-hidden="true">*</span>
+              </label>
+              <input
+                id="med-name-input"
+                type="text"
+                list="figma-med-list"
+                className="figma-med-input"
+                placeholder="e.g. Aspirin, Metformin, Amlodipine"
+                value={medicineName}
+                onChange={(e) => setMedicineName(e.target.value)}
+                disabled={isBusy}
+              />
+              <datalist id="figma-med-list">
+                {commonMedicines.map((m) => (
+                  <option key={m} value={m} />
+                ))}
+              </datalist>
+            </div>
 
-          <div className="seg" role="group" aria-label="Time of day">
-            {['Morning', 'Afternoon', 'Night'].map((time) => (
-              <button
-                key={time}
-                type="button"
-                className={selectedTimes.includes(time) ? 'on' : ''}
-                aria-pressed={selectedTimes.includes(time)}
-                onClick={() => toggleTime(time)}
+            {/* Dosage Section: How Much */}
+            <div className="phase2-field">
+              <label htmlFor="med-dosage-input" className="phase2-label">
+                Dosage (How much) <span aria-hidden="true">*</span>
+              </label>
+              <input
+                id="med-dosage-input"
+                type="text"
+                className="figma-med-input"
+                placeholder="e.g. 500 mg, 1 tablet, 10 ml"
+                value={dosage}
+                onChange={(e) => setDosage(e.target.value)}
+                disabled={isBusy}
+              />
+            </div>
+
+            {/* Frequency: How Often */}
+            <div className="phase2-field">
+              <label htmlFor="med-frequency-select" className="phase2-label">
+                Frequency (How often)
+              </label>
+              <select
+                id="med-frequency-select"
+                className="figma-med-input"
+                value={frequency}
+                onChange={(e) => handleFrequencyChange(e.target.value)}
+                disabled={isBusy}
               >
-                {time}
-              </button>
-            ))}
-          </div>
+                {FREQUENCY_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <button type="submit" className="btn hi" disabled={Boolean(duplicateMatch)}>
-            {ui.addMedicine}
-          </button>
-        </form>
-
-        {/* Live Duplicate Warning */}
-        {duplicateMatch && (
-          <div className="inline-notice warn" role="alert">
-            <Icon name="alert" />
-            <span>
-              <strong>Already scheduled:</strong> {duplicateMatch.name} ({duplicateMatch.time}) is already on the list. Duplicate entries are blocked.
-            </span>
-          </div>
-        )}
-
-        {/* Live Pre-Add Contraindication Warning */}
-        {preAddConflicts.length > 0 && (
-          <div className="alert-card" role="alert" style={{ marginTop: '12px' }}>
-            <span className="badge">
-              <Icon name="alert" />
-            </span>
-            <div>
-              <b>Interaction warning before adding “{medicineName.trim()}”</b>
-              {preAddConflicts.map((w, idx) => (
-                <p key={idx}>{w}</p>
-              ))}
+            {/* Instructions Section: How To Take It */}
+            <div className="phase2-field">
+              <label htmlFor="med-instructions-input" className="phase2-label">
+                Instructions (How to take it)
+              </label>
+              <input
+                id="med-instructions-input"
+                type="text"
+                className="figma-med-input"
+                placeholder="e.g. After food with water, empty stomach"
+                value={instructions}
+                onChange={(e) => setInstructions(e.target.value)}
+                disabled={isBusy}
+              />
             </div>
           </div>
-        )}
 
-        {/* Submission Feedback */}
-        {feedback && !duplicateMatch && (
-          <div className={`inline-notice ${feedback.type === 'error' ? 'warn' : 'ok'}`} role="status">
-            <Icon name={feedback.type === 'error' ? 'alert' : 'check'} />
-            <span>{feedback.text}</span>
+          {/* When To Take It Section: Scheduled Time Slots */}
+          <div className="phase2-form-footer">
+            <div className="phase2-times-selector">
+              <span className="phase2-label">When to take it (Scheduled times) <span aria-hidden="true">*</span>:</span>
+              <div className="med-time-pills-group" role="group" aria-label="Select scheduled times">
+                {SCHEDULE_TIME_OPTIONS.map((time) => {
+                  const active = selectedTimes.includes(time);
+                  return (
+                    <button
+                      key={time}
+                      type="button"
+                      className={`time-pill-btn ${active ? 'active' : ''}`}
+                      onClick={() => toggleScheduledTime(time)}
+                      aria-pressed={active}
+                      aria-label={`Schedule for ${time}`}
+                      disabled={isBusy}
+                    >
+                      {time === 'Morning' ? '🌅 Morning' : time === 'Afternoon' ? '☀️ Afternoon' : '🌙 Night'}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="btn-figma-add-med"
+              disabled={isBusy}
+              aria-busy={isBusy}
+            >
+              {isBusy ? 'Saving…' : 'Add to Schedule'}
+            </button>
+          </div>
+        </form>
+
+        {errorMsg && <p className="figma-form-error" role="alert">{errorMsg}</p>}
+        {statusMsg && !errorMsg && (
+          <p className="phase2-form-status" role="status">{statusMsg}</p>
+        )}
+      </div>
+
+      {/* Active Schedule Grid */}
+      <h3 className="section-small-title" style={{ marginTop: '24px', marginBottom: '12px' }}>
+        📅 Active Medication Schedule &amp; Daily Dose Tracking
+      </h3>
+      <div className="figma-medicines-list-grid">
+        {medicines.length > 0 ? (
+          medicines.map((med) => {
+            const medId = getMedicineId(med);
+            return (
+              <MedicineCard
+                key={medId}
+                medicine={med}
+                doseLogs={doseLogs}
+                todayDate={todayDate}
+                onMarkDoseTaken={handleMarkDoseTaken}
+                onUndoDose={handleUndoDose}
+                onRemove={handleRemove}
+                isBusy={isBusy}
+              />
+            );
+          })
+        ) : (
+          <div className="figma-empty-card">
+            <p>No medicines logged yet. Add one above.</p>
           </div>
         )}
       </div>
 
-      {/* Active Drug Interaction Alert */}
+      {/* Red Dangerous Combination Alert Box */}
       {warnings.length > 0 && (
-        <div className="alert-card" role="alert">
-          <span className="badge">
-            <Icon name="alert" />
-          </span>
-          <div>
-            <b>Active drug interaction detected</b>
+        <div className="figma-dangerous-combo-card" role="alert" style={{ marginTop: '24px' }}>
+          <div className="danger-combo-header">
+            <span className="danger-triangle-icon" aria-hidden="true">⚠️</span>
+            <h3>Dangerous Drug Combination Detected</h3>
+          </div>
+          <div className="danger-combo-body">
             {warnings.map((w, idx) => (
-              <p key={idx}>{w}</p>
+              <p key={idx} className="danger-combo-text">
+                {w}
+              </p>
             ))}
+          </div>
+          <div className="danger-combo-action">
+            <button
+              type="button"
+              className="btn-danger-details"
+              onClick={() => setShowAdvisory((prev) => !prev)}
+              aria-expanded={showAdvisory}
+            >
+              {showAdvisory ? 'Hide Advisory ▲' : 'Details / Advisory ▼'}
+            </button>
+            {showAdvisory && (
+              <div className="advisory-panel" role="note">
+                <p>
+                  <strong>Clinical Advisory:</strong> One or more medicines in this schedule
+                  have a known dangerous interaction. Please consult with your physician or
+                  pharmacist before administering these medications concurrently. Do not stop
+                  or change medicines without professional guidance.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* Filter Bar */}
-      <div className="med-filter-bar mt">
-        <div className="seg" role="group" aria-label="Filter by status">
-          {[
-            { id: 'all', label: `All (${totalCount})` },
-            { id: 'pending', label: `Pending (${pendingCount})` },
-            { id: 'taken', label: `Taken (${takenCount})` }
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              className={statusFilter === tab.id ? 'on' : ''}
-              onClick={() => setStatusFilter(tab.id)}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="chips">
-          {['All', 'Morning', 'Afternoon', 'Night'].map((slot) => (
-            <button
-              key={slot}
-              type="button"
-              className={`chip ${timeFilter === slot ? 'tag-active' : ''}`}
-              onClick={() => setTimeFilter(slot)}
-            >
-              {slot === 'All' ? 'All times' : slot}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Medicines Grid */}
-      <div className="meds-grid">
-        {filteredMedicines.length > 0 ? (
-          filteredMedicines.map(({ med, originalIndex }) => (
-            <MedicineCard
-              key={`${normalizeMedicineName(med.name)}-${originalIndex}`}
-              medicine={med}
-              index={originalIndex}
-              hasConflict={conflictingDrugNames.has(normalizeMedicineName(med.name))}
-              langCode={langCode}
-              onToggleTaken={handleToggleTaken}
-              onRemove={handleRemove}
-            />
-          ))
-        ) : (
-          <div className="card" style={{ gridColumn: '1 / -1', textAlign: 'center' }}>
-            <p className="empty-subtext" style={{ margin: 0 }}>
-              {totalCount === 0
-                ? 'No medicines logged yet. Add one above.'
-                : 'No medicines match the selected filter.'}
+      {/* Expandable Dose History Section */}
+      <div className="phase2-history-section">
+        <div className="phase2-history-header">
+          <div>
+            <h3 className="phase2-history-title">Medicine Dose History Log</h3>
+            <p className="phase2-history-sub">
+              Audit log of previous days and dose actions (kept separate from today&apos;s active schedule).
             </p>
+          </div>
+          <button
+            type="button"
+            className="btn-toggle-history"
+            onClick={() => setShowHistory((prev) => !prev)}
+            aria-expanded={showHistory}
+          >
+            {showHistory ? 'Hide History ▲' : `Show History (${doseLogs.length}) ▼`}
+          </button>
+        </div>
+
+        {showHistory && (
+          <div className="phase2-history-body">
+            <div className="phase2-history-filters" role="group" aria-label="Filter dose history">
+              <button
+                type="button"
+                className={`time-pill-btn ${historyFilter === 'past' ? 'active' : ''}`}
+                onClick={() => setHistoryFilter('past')}
+              >
+                Previous Days &amp; Undone
+              </button>
+              <button
+                type="button"
+                className={`time-pill-btn ${historyFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setHistoryFilter('all')}
+              >
+                All Recorded Doses ({doseLogs.length})
+              </button>
+            </div>
+
+            {historyRecords.length > 0 ? (
+              <div className="phase2-history-list">
+                {historyRecords.map((log) => (
+                  <div key={log.id} className="phase2-history-row">
+                    <div className="history-row-main">
+                      <strong>{log.medicineName}</strong>
+                      {log.dosage && <span className="med-meta-badge">{log.dosage}</span>}
+                      <span className="history-time-pill">{log.scheduledTime}</span>
+                    </div>
+                    <div className="history-row-meta">
+                      <span className="history-date">{log.date}</span>
+                      <span className={`history-status-pill ${log.status === 'taken' ? 'taken' : 'undone'}`}>
+                        {log.status === 'taken' ? '✓ Taken' : '↩ Undone'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="empty-subtext">
+                {historyFilter === 'past'
+                  ? 'No previous-day or undone dose records yet.'
+                  : 'No dose records logged yet.'}
+              </p>
+            )}
           </div>
         )}
       </div>

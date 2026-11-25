@@ -318,7 +318,17 @@ export default function Caregiver() {
                   </span>
                   <div className="log-main">
                     <b>{m.name}</b>
-                    <small>{m.time}</small>
+                    <small>
+                      {m.dosage ? <strong>{m.dosage} · </strong> : ''}
+                      {m.frequency ? `${m.frequency} (` : ''}
+                      {m.time || (Array.isArray(m.times) ? m.times.join(', ') : 'Morning')}
+                      {m.frequency ? ')' : ''}
+                    </small>
+                    {m.instructions && (
+                      <small style={{ display: 'block', color: 'var(--mute)', fontStyle: 'italic', marginTop: '2px' }}>
+                        How: {m.instructions}
+                      </small>
+                    )}
                   </div>
                   {m.taken ? (
                     <span className="taken on">

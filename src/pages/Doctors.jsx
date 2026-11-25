@@ -64,8 +64,9 @@ export default function Doctors() {
     if (!newMedName.trim()) return;
 
     const result = await addMedicine({
-      name: `${newMedName.trim()}${newMedInstructions ? ` (${newMedInstructions})` : ''}`,
-      time: newMedTime
+      name: newMedName.trim(),
+      time: newMedTime,
+      instructions: newMedInstructions.trim()
     });
 
     if (result?.duplicate) {

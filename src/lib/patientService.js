@@ -13,6 +13,13 @@
 import { doc, getDoc, setDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { db } from './firebase.js';
 import { checkInteractions } from './interactions.js';
+import {
+  generateStableId,
+  getLocalDateString,
+  getMedicineId,
+  getMedicineTimes,
+  findActiveDoseLog
+} from './medicineUtils.js';
 
 const STORAGE_KEY = 'sanjeevani_patient_record';
 const EVENT_NAME = 'sanjeevani_record_updated';
@@ -37,6 +44,7 @@ export const DEFAULT_PATIENT = {
     { name: 'Metformin', time: 'Morning', taken: true },
     { name: 'Amlodipine', time: 'Night', taken: false }
   ],
+  doseLogs: [],          // Phase 2: date-based daily dose tracking & history
   warnings: [],          // array of warning strings from interactions.js
   appointment: null,     // { doctorId, doctorName, time, videoLink }
   doctorNotes: 'Patient has history of hypertension and Type-2 Diabetes. Monitor vitals and adherence.',
@@ -331,24 +339,69 @@ export function normalizeMedicineName(name = '') {
 }
 
 /**
- * Adds a new medicine (preventing duplicates), runs drug interaction checks, and updates active warnings.
+ * Non-destructive migration helper: ensures every medicine has a stable `id`
+ * without altering or overwriting existing fields.
  */
-export async function addMedicine({ name, time }) {
-  if (!name || !name.trim()) return { skipped: true };
-  const current = await getPatient();
-  const medicines = [...(current.medicines || [])];
-  const normalizedNew = normalizeMedicineName(name);
+function ensureMedicineIds(medicines = []) {
+  return medicines.map((m) => (m.id ? m : { ...m, id: getMedicineId(m) }));
+}
 
+/**
+ * Computes whether all scheduled doses for a given medicine are taken on `dateStr`
+ * so legacy `med.taken` stays synced for Caregiver.jsx / Doctors.jsx.
+ */
+function isMedicineFullyTakenForDate(med, doseLogs = [], dateStr = getLocalDateString()) {
+  const medId = getMedicineId(med);
+  const times = getMedicineTimes(med);
+  if (times.length === 0) return false;
+  return times.every((t) => Boolean(findActiveDoseLog(doseLogs, medId, t, dateStr)));
+}
+
+/**
+ * Adds a new medicine (preventing duplicates), runs drug interaction checks, and updates active warnings.
+ * Supports both Phase 2 extended payload (dosage, frequency, times[], instructions)
+ * and legacy payload ({ name, time }).
+ */
+export async function addMedicine(medicineData) {
+  if (!medicineData || !medicineData.name || !medicineData.name.trim()) {
+    return { skipped: true };
+  }
+
+  const current = await getPatient();
+  const medicines = ensureMedicineIds([...(current.medicines || [])]);
+  const normalizedNew = normalizeMedicineName(medicineData.name);
+
+  // Duplicate detection by normalized name
   const existing = medicines.find((m) => normalizeMedicineName(m.name) === normalizedNew);
   if (existing) {
     return { ...current, duplicate: true, existingMedicine: existing };
   }
 
-  medicines.push({
-    name: name.trim(),
-    time: time || 'Morning',
-    taken: false
-  });
+  // Parse times array or fall back to legacy `time` string
+  let times = [];
+  if (Array.isArray(medicineData.times) && medicineData.times.length > 0) {
+    times = medicineData.times.map((t) => String(t).trim()).filter(Boolean);
+  } else if (typeof medicineData.time === 'string' && medicineData.time.trim()) {
+    times = medicineData.time
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean);
+  }
+  if (times.length === 0) times = ['Morning'];
+
+  const newMed = {
+    id: generateStableId('med'),
+    name: medicineData.name.trim(),
+    dosage: typeof medicineData.dosage === 'string' ? medicineData.dosage.trim() : '',
+    frequency: typeof medicineData.frequency === 'string' ? medicineData.frequency.trim() : '',
+    times,
+    time: medicineData.time || times.join(', '),
+    instructions: typeof medicineData.instructions === 'string' ? medicineData.instructions.trim() : '',
+    taken: false,
+    createdAt: new Date().toISOString()
+  };
+
+  medicines.push(newMed);
 
   // Re-run drug interaction safety checks
   const warnings = checkInteractions(medicines);
@@ -374,17 +427,34 @@ export async function addMedicine({ name, time }) {
 }
 
 /**
- * Marks a specific medicine as taken.
+ * Updates an existing medicine's metadata (e.g. dosage, frequency, times, instructions).
+ * Re-runs interaction checks if the name changed.
  */
-export async function markMedicineTaken(index) {
+export async function updateMedicine(idOrIndex, updatesObj) {
   const current = await getPatient();
-  const medicines = [...(current.medicines || [])];
+  const medicines = ensureMedicineIds([...(current.medicines || [])]);
 
-  if (medicines[index]) {
-    medicines[index] = { ...medicines[index], taken: true };
+  let targetIdx = -1;
+  if (typeof idOrIndex === 'string') {
+    targetIdx = medicines.findIndex((m) => getMedicineId(m) === idOrIndex);
+  } else if (typeof idOrIndex === 'number') {
+    targetIdx = idOrIndex;
   }
 
-  const updates = { medicines, updatedAt: new Date().toISOString() };
+  if (targetIdx === -1 || !medicines[targetIdx]) return current;
+
+  medicines[targetIdx] = {
+    ...medicines[targetIdx],
+    ...updatesObj,
+    id: medicines[targetIdx].id || getMedicineId(medicines[targetIdx])
+  };
+
+  const warnings = checkInteractions(medicines);
+  const updates = {
+    medicines,
+    warnings,
+    updatedAt: new Date().toISOString()
+  };
 
   if (!db) {
     return saveLocalPatient({ ...current, ...updates });
@@ -395,9 +465,160 @@ export async function markMedicineTaken(index) {
     await updateDoc(docRef, updates);
     return { ...current, ...updates };
   } catch (e) {
-    console.warn('[patientService] Firestore markMedicineTaken error, saving locally:', e);
+    console.warn('[patientService] Firestore updateMedicine error, saving locally:', e);
     return saveLocalPatient({ ...current, ...updates });
   }
+}
+
+/**
+ * Records a scheduled dose as taken for a specific calendar date.
+ * Idempotent: will not duplicate a taken log if already recorded for the same medicineId + scheduledTime + date.
+ * Also keeps legacy `med.taken` synced for today.
+ */
+export async function recordDoseTaken({
+  medicineId,
+  scheduledTime,
+  date = getLocalDateString(),
+  takenAt = new Date().toISOString(),
+  notes = ''
+}) {
+  const current = await getPatient();
+  const medicines = ensureMedicineIds([...(current.medicines || [])]);
+  const doseLogs = [...(current.doseLogs || [])];
+
+  const targetMed = medicines.find((m) => getMedicineId(m) === medicineId);
+  const medicineName = targetMed?.name || 'Unknown medicine';
+
+  // Prevent duplicate taken logs
+  const existingActive = findActiveDoseLog(doseLogs, medicineId, scheduledTime, date);
+  if (existingActive) {
+    return current;
+  }
+
+  const newLog = {
+    id: generateStableId('dose'),
+    medicineId,
+    medicineName,
+    dosage: targetMed?.dosage || '',
+    scheduledTime,
+    date,
+    status: 'taken',
+    takenAt,
+    notes: (notes || '').trim(),
+    recordedAt: new Date().toISOString()
+  };
+
+  doseLogs.push(newLog);
+
+  // Sync legacy `med.taken` flag for current day
+  const medIndex = medicines.findIndex((m) => getMedicineId(m) === medicineId);
+  if (medIndex !== -1) {
+    medicines[medIndex] = {
+      ...medicines[medIndex],
+      taken: isMedicineFullyTakenForDate(medicines[medIndex], doseLogs, date)
+    };
+  }
+
+  const updates = {
+    medicines,
+    doseLogs,
+    updatedAt: new Date().toISOString()
+  };
+
+  if (!db) {
+    return saveLocalPatient({ ...current, ...updates });
+  }
+
+  try {
+    const docRef = doc(db, COLLECTION_NAME, DOC_ID);
+    await updateDoc(docRef, updates);
+    return { ...current, ...updates };
+  } catch (e) {
+    console.warn('[patientService] Firestore recordDoseTaken error, saving locally:', e);
+    return saveLocalPatient({ ...current, ...updates });
+  }
+}
+
+/**
+ * Reverts / marks undone a previously recorded dose for a specific date and time slot.
+ * Soft-updates the log status to 'undone' for auditability.
+ */
+export async function undoDose({
+  medicineId,
+  scheduledTime,
+  date = getLocalDateString()
+}) {
+  const current = await getPatient();
+  const medicines = ensureMedicineIds([...(current.medicines || [])]);
+  const doseLogs = [...(current.doseLogs || [])];
+
+  let changed = false;
+  const updatedLogs = doseLogs.map((log) => {
+    if (
+      log.medicineId === medicineId &&
+      log.scheduledTime === scheduledTime &&
+      log.date === date &&
+      log.status === 'taken'
+    ) {
+      changed = true;
+      return {
+        ...log,
+        status: 'undone',
+        undoneAt: new Date().toISOString()
+      };
+    }
+    return log;
+  });
+
+  if (!changed) return current;
+
+  const medIndex = medicines.findIndex((m) => getMedicineId(m) === medicineId);
+  if (medIndex !== -1) {
+    medicines[medIndex] = {
+      ...medicines[medIndex],
+      taken: isMedicineFullyTakenForDate(medicines[medIndex], updatedLogs, date)
+    };
+  }
+
+  const updates = {
+    medicines,
+    doseLogs: updatedLogs,
+    updatedAt: new Date().toISOString()
+  };
+
+  if (!db) {
+    return saveLocalPatient({ ...current, ...updates });
+  }
+
+  try {
+    const docRef = doc(db, COLLECTION_NAME, DOC_ID);
+    await updateDoc(docRef, updates);
+    return { ...current, ...updates };
+  } catch (e) {
+    console.warn('[patientService] Firestore undoDose error, saving locally:', e);
+    return saveLocalPatient({ ...current, ...updates });
+  }
+}
+
+/**
+ * Legacy-compatible wrapper: marks the first pending scheduled dose (or all doses) at `index` as taken.
+ */
+export async function markMedicineTaken(index) {
+  const current = await getPatient();
+  const medicines = ensureMedicineIds([...(current.medicines || [])]);
+  const target = medicines[index];
+  if (!target) return;
+
+  const times = getMedicineTimes(target);
+  const dateStr = getLocalDateString();
+  const doseLogs = current.doseLogs || [];
+  const nextPending = times.find((t) => !findActiveDoseLog(doseLogs, target.id, t, dateStr)) || times[0];
+
+  return recordDoseTaken({
+    medicineId: target.id,
+    scheduledTime: nextPending,
+    date: dateStr
+  });
 }
 
 /**
@@ -405,37 +626,41 @@ export async function markMedicineTaken(index) {
  */
 export async function toggleMedicineTaken(index) {
   const current = await getPatient();
-  const medicines = [...(current.medicines || [])];
+  const medicines = ensureMedicineIds([...(current.medicines || [])]);
+  const target = medicines[index];
+  if (!target) return current;
 
-  if (medicines[index]) {
-    medicines[index] = { ...medicines[index], taken: !medicines[index].taken };
-  }
+  const dateStr = getLocalDateString();
+  const times = getMedicineTimes(target);
+  const primaryTime = times[0] || 'Morning';
+  const isTaken = Boolean(findActiveDoseLog(current.doseLogs || [], target.id, primaryTime, dateStr));
 
-  const updates = { medicines, updatedAt: new Date().toISOString() };
-
-  if (!db) {
-    return saveLocalPatient({ ...current, ...updates });
-  }
-
-  try {
-    const docRef = doc(db, COLLECTION_NAME, DOC_ID);
-    await updateDoc(docRef, updates);
-    return { ...current, ...updates };
-  } catch (e) {
-    console.warn('[patientService] Firestore toggleMedicineTaken error, saving locally:', e);
-    return saveLocalPatient({ ...current, ...updates });
+  if (isTaken) {
+    return undoDose({ medicineId: target.id, scheduledTime: primaryTime, date: dateStr });
+  } else {
+    return recordDoseTaken({ medicineId: target.id, scheduledTime: primaryTime, date: dateStr });
   }
 }
 
 /**
- * Removes a medicine by index and re-evaluates drug interaction warnings.
+ * Removes a medicine by stable `id` (or numeric index for legacy callers),
+ * then re-runs drug interaction checks. Preserves historical doseLogs.
  */
-export async function removeMedicine(index) {
+export async function removeMedicine(idOrIndex) {
   const current = await getPatient();
-  const medicines = [...(current.medicines || [])];
-  if (index < 0 || index >= medicines.length) return current;
+  const medicines = ensureMedicineIds([...(current.medicines || [])]);
 
-  medicines.splice(index, 1);
+  let targetIdx = -1;
+  if (typeof idOrIndex === 'string') {
+    targetIdx = medicines.findIndex((m) => getMedicineId(m) === idOrIndex);
+  } else if (typeof idOrIndex === 'number') {
+    targetIdx = idOrIndex;
+  }
+
+  if (targetIdx < 0 || targetIdx >= medicines.length) return current;
+  medicines.splice(targetIdx, 1);
+
+  // Re-evaluate interactions with the updated list
   const warnings = checkInteractions(medicines);
 
   const updates = {
