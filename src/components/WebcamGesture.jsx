@@ -9,10 +9,11 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
 import { GESTURE_DEFINITIONS, classifyHandLandmarks } from '../lib/gestures.js';
 import { getUiText, getSymptomText } from '../lib/translations.js';
 import Icon from './Icons.jsx';
+
+let cachedHandConnections = null;
 
 const LOCAL_WASM_PATH = '/mediapipe/wasm';
 const LOCAL_MODEL_PATH = '/mediapipe/hand_landmarker.task';
@@ -88,7 +89,7 @@ export default function WebcamGesture({
     const strokeColor = isEmergencyHold ? '#ef4444' : '#10b981';
     const pointColor = isEmergencyHold ? '#fca5a5' : '#ffffff';
 
-    const connections = HandLandmarker.HAND_CONNECTIONS || [];
+    const connections = cachedHandConnections || [];
     ctx.strokeStyle = strokeColor;
     ctx.lineWidth = 3;
     ctx.lineCap = 'round';
@@ -129,6 +130,10 @@ export default function WebcamGesture({
     setModelStatus('loading');
 
     const createWithConfig = async (wasmPath, modelPath, delegate) => {
+      const { FilesetResolver, HandLandmarker } = await import('@mediapipe/tasks-vision');
+      if (!cachedHandConnections) {
+        cachedHandConnections = HandLandmarker.HAND_CONNECTIONS || [];
+      }
       const vision = await FilesetResolver.forVisionTasks(wasmPath);
       return HandLandmarker.createFromOptions(vision, {
         baseOptions: {

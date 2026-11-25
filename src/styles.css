@@ -2905,3 +2905,887 @@ h2.sec {
 }
 
 
+
+/* ==========================================================================
+   PART D: EYE-GESTURE ACCESSIBILITY MODE STYLES (Responsive & Zoom-Proof)
+   ========================================================================== */
+
+.btn-eye-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1.5px solid var(--brand, #134E32);
+  background: #ffffff;
+  color: var(--brand, #134E32);
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.btn-eye-toggle:hover {
+  background: var(--tint, #EAF3ED);
+}
+
+.btn-eye-toggle.is-active {
+  background: var(--brand, #134E32);
+  color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(19, 78, 50, 0.25);
+}
+
+/* Eye-Friendly Global UI Overrides when Mode is Active */
+html[data-eye-mode='true'] body {
+  font-size: clamp(16px, 1.15vw + 12px, 20px);
+  overflow-x: clip;
+}
+
+html[data-eye-mode='true'] .app-main {
+  padding-bottom: clamp(140px, 18vh, 210px);
+}
+
+html[data-eye-mode='true'] button:not(.eye-gaze-cursor):not(.eye-kbd-key),
+html[data-eye-mode='true'] a.btn,
+html[data-eye-mode='true'] .sj-nav-link,
+html[data-eye-mode='true'] .quick-link-chip,
+html[data-eye-mode='true'] .btn-reset,
+html[data-eye-mode='true'] .btn-eye-toggle,
+html[data-eye-mode='true'] select.sj-select {
+  min-width: 64px;
+  min-height: 64px;
+  padding: clamp(10px, 1.4vw, 16px) clamp(14px, 2vw, 22px);
+  font-size: clamp(0.95rem, 1.25vw, 1.18rem);
+}
+
+html[data-eye-mode='true'] input:not([type='checkbox']):not([type='radio']),
+html[data-eye-mode='true'] textarea {
+  min-height: 64px;
+  font-size: clamp(1rem, 1.4vw, 1.25rem);
+  padding: 12px 16px;
+}
+
+html[data-eye-mode='true'] .sym,
+html[data-eye-mode='true'] .roles-grid,
+html[data-eye-mode='true'] .meds-grid,
+html[data-eye-mode='true'] .doctors-grid {
+  gap: clamp(14px, 2vw, 24px);
+}
+
+html[data-eye-mode='true'] button:focus-visible,
+html[data-eye-mode='true'] a:focus-visible,
+html[data-eye-mode='true'] input:focus-visible,
+html[data-eye-mode='true'] select:focus-visible,
+html[data-eye-mode='true'] [role='button']:focus-visible {
+  outline: 4px solid #0E3D27 !important;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 7px rgba(250, 204, 21, 0.7) !important;
+}
+
+/* Prevent accidental horizontal overflow at high zoom or small viewports */
+html[data-eye-mode='true'] .sj-header {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+html[data-eye-mode='true'] .sj-nav,
+html[data-eye-mode='true'] .sj-header-right {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
+/* Gaze Cursor & Magnetic Target Snap Highlight */
+.eye-gaze-cursor {
+  position: fixed;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(19, 78, 50, 0.28) 0%, rgba(19, 78, 50, 0.08) 70%);
+  border: 2.5px solid rgba(19, 78, 50, 0.85);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.8), 0 6px 18px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: width 0.15s ease, height 0.15s ease;
+}
+
+.eye-gaze-cursor.is-paused {
+  background: rgba(245, 158, 11, 0.25);
+  border-color: #D97706;
+}
+
+.eye-gaze-core {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #134E32;
+  border: 1.5px solid #ffffff;
+}
+
+.eye-gaze-cursor.is-paused .eye-gaze-core {
+  background: #D97706;
+}
+
+.eye-dwell-ring {
+  position: absolute;
+  pointer-events: none;
+}
+
+.eye-snap-highlight {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9990;
+  border-radius: 16px;
+  border: 4px solid #134E32;
+  box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.75), 0 8px 24px rgba(19, 78, 50, 0.24);
+  transition: all 0.1s ease-out;
+}
+
+.eye-snap-highlight.is-emergency {
+  border-color: #DC2626;
+  box-shadow: 0 0 0 5px rgba(254, 202, 202, 0.9), 0 0 28px rgba(220, 38, 38, 0.45);
+}
+
+/* Eye Control Persistent Top HUD Bar */
+.eye-hud-bar {
+  position: sticky;
+  top: 0;
+  z-index: 8000;
+  width: 100%;
+  background: #0E3D27;
+  color: #FFFFFF;
+  padding: clamp(8px, 1.2vw, 14px) clamp(10px, 2vw, 24px);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 3px solid #FACC15;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
+}
+
+.eye-hud-status {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: clamp(0.88rem, 1.2vw, 1.05rem);
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.eye-hud-status.state-too_dark,
+.eye-hud-status.state-no_face,
+.eye-hud-status.state-move_closer,
+.eye-hud-status.state-paused {
+  background: #FEF08A;
+  color: #161B18;
+}
+
+.eye-hud-status.state-camera_blocked,
+.eye-hud-status.state-no_camera {
+  background: #FEE2E2;
+  color: #991B1B;
+}
+
+.eye-cam-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #F59E0B;
+  flex-shrink: 0;
+}
+
+.eye-cam-dot.live {
+  background: #22C55E;
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.35);
+}
+
+.eye-pause-progress {
+  background: #161B18;
+  color: #FEF08A;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.85em;
+}
+
+.eye-hud-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.eye-hud-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 64px;
+  min-height: 64px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  background: #165B3B;
+  color: #FFFFFF;
+  font-weight: 700;
+  font-size: clamp(0.9rem, 1.1vw, 1.05rem);
+  cursor: pointer;
+}
+
+.eye-hud-btn:hover {
+  background: #1F7A50;
+}
+
+.eye-hud-btn.warn {
+  background: #D97706;
+  border-color: #FDE68A;
+  color: #FFFFFF;
+}
+
+.eye-hud-btn.agent {
+  background: #0F766E;
+  border-color: #99F6E4;
+}
+
+.eye-hud-btn.exit {
+  background: #991B1B;
+  border-color: #FCA5A5;
+}
+
+/* Dedicated Gaze Scroll Buttons Dock */
+.eye-scroll-dock {
+  position: fixed;
+  left: clamp(8px, 1.5vw, 20px);
+  bottom: clamp(12px, 2vh, 24px);
+  z-index: 8050;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.eye-scroll-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 68px;
+  min-height: 68px;
+  padding: 12px 18px;
+  border-radius: 16px;
+  background: #FFFFFF;
+  color: #0E3D27;
+  border: 3px solid #0E3D27;
+  font-weight: 800;
+  font-size: clamp(0.92rem, 1.1vw, 1.08rem);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+}
+
+/* Always-Visible Large Emergency SOS Button (2s Dwell) */
+.eye-sos-fab {
+  position: fixed;
+  right: clamp(10px, 2vw, 24px);
+  bottom: clamp(12px, 2vh, 24px);
+  z-index: 8100;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-width: 96px;
+  min-height: 76px;
+  padding: 14px 22px;
+  border-radius: 20px;
+  border: 4px solid #FEF2F2;
+  background: #DC2626;
+  color: #FFFFFF;
+  box-shadow: 0 10px 28px rgba(220, 38, 38, 0.45);
+  cursor: pointer;
+}
+
+.eye-sos-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.1;
+}
+
+.eye-sos-text strong {
+  font-size: 1.25rem;
+  letter-spacing: 0.04em;
+}
+
+.eye-sos-text small {
+  font-size: 0.8rem;
+  opacity: 0.92;
+}
+
+.eye-sos-banner {
+  position: fixed;
+  top: clamp(80px, 12vh, 130px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9600;
+  max-width: min(92vw, 580px);
+  background: #DC2626;
+  color: #FFFFFF;
+  border: 3px solid #FEF08A;
+  border-radius: 14px;
+  padding: 16px 22px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: clamp(1rem, 1.5vw, 1.3rem);
+  font-weight: 800;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
+}
+
+/* 9-Point Calibration Screen */
+.eye-calibration-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9500;
+  background: rgba(11, 22, 17, 0.95);
+  color: #FFFFFF;
+  min-height: 100dvh;
+  width: 100%;
+  overflow: hidden;
+}
+
+.eye-calibration-header {
+  max-width: min(960px, 94vw);
+  margin: clamp(12px, 3vh, 28px) auto 0;
+  padding: 14px 20px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.eye-calibration-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.eye-calibration-title h2 {
+  margin: 0;
+  font-size: clamp(1.1rem, 2vw, 1.45rem);
+}
+
+.eye-calibration-title p {
+  margin: 4px 0 0;
+  font-size: clamp(0.88rem, 1.3vw, 1.05rem);
+  color: #CBD5E1;
+}
+
+.eye-calibration-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.eye-calibration-status-pill {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #FEF08A;
+  color: #161B18;
+  padding: 14px 22px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: clamp(1rem, 1.5vw, 1.25rem);
+  z-index: 9510;
+  text-align: center;
+  max-width: 90vw;
+}
+
+.eye-calibration-target {
+  position: fixed;
+  transform: translate(-50%, -50%);
+  width: 84px;
+  height: 84px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9520;
+}
+
+.eye-calibration-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #FACC15;
+  border: 3px solid #FFFFFF;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.eye-calibration-dot.is-collecting {
+  background: #22C55E;
+  transform: scale(1.2);
+}
+
+.eye-calibration-count {
+  position: absolute;
+  bottom: -24px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #E2E8F0;
+}
+
+/* Gaze Modals (Consent, Settings, AI Agent) */
+.eye-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(10px, 2vw, 24px);
+}
+
+.eye-modal-card {
+  width: min(920px, 100%);
+  max-height: calc(100dvh - 28px);
+  overflow-y: auto;
+  background: #FFFFFF;
+  color: #161B18;
+  border: 3px solid #0E3D27;
+  border-radius: 20px;
+  padding: clamp(16px, 3vw, 28px);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
+}
+
+.eye-modal-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.eye-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.eye-modal-title h2 {
+  margin: 0;
+  font-size: clamp(1.2rem, 2.2vw, 1.6rem);
+}
+
+.eye-consent-desc {
+  font-size: clamp(1rem, 1.4vw, 1.18rem);
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+.eye-consent-list {
+  padding-left: 20px;
+  margin: 0 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: clamp(0.95rem, 1.3vw, 1.1rem);
+  color: #334155;
+}
+
+.eye-modal-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+  justify-content: flex-end;
+}
+
+.eye-ctrl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-width: 64px;
+  min-height: 64px;
+  padding: 12px 20px;
+  border-radius: 14px;
+  border: 2px solid #CBD5E1;
+  background: #F8FAFC;
+  color: #161B18;
+  font-weight: 700;
+  font-size: clamp(0.95rem, 1.25vw, 1.1rem);
+  cursor: pointer;
+}
+
+.eye-ctrl-btn.primary {
+  background: #134E32;
+  border-color: #0E3D27;
+  color: #FFFFFF;
+}
+
+.eye-ctrl-btn.danger {
+  background: #FEE2E2;
+  border-color: #DC2626;
+  color: #991B1B;
+}
+
+/* Eye Settings Grid */
+.eye-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: 16px;
+}
+
+.eye-setting-group {
+  background: #F8FAFC;
+  border: 1.5px solid #CBD5E1;
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.eye-setting-group h3 {
+  margin: 0 0 12px;
+  font-size: 1.05rem;
+  color: #0E3D27;
+}
+
+.eye-toggle-row,
+.eye-stepper-row,
+.eye-choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.eye-toggle-btn {
+  flex: 1 1 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 64px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 2px solid #CBD5E1;
+  background: #FFFFFF;
+  color: #161B18;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.eye-toggle-btn.is-on {
+  border-color: #134E32;
+  background: #DCFCE7;
+  color: #064E3B;
+}
+
+.eye-stepper-btn,
+.eye-choice-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 64px;
+  min-height: 64px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 2px solid #94A3B8;
+  background: #FFFFFF;
+  color: #161B18;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.eye-choice-btn.is-selected {
+  background: #134E32;
+  color: #FFFFFF;
+  border-color: #0E3D27;
+}
+
+.eye-stepper-val {
+  min-width: 78px;
+  text-align: center;
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+
+/* On-Screen Gaze Keyboard & Quick Phrases Dock */
+.eye-keyboard-dock {
+  position: fixed;
+  left: 50%;
+  bottom: clamp(8px, 1.5vh, 18px);
+  transform: translateX(-50%);
+  width: min(980px, 96vw);
+  max-height: 75dvh;
+  overflow-y: auto;
+  z-index: 9200;
+  background: #FFFFFF;
+  border: 3px solid #0E3D27;
+  border-radius: 20px;
+  padding: clamp(10px, 2vw, 18px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+
+.eye-phrases-bar {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #E2E8F0;
+}
+
+.eye-phrases-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  color: #0E3D27;
+  margin-bottom: 8px;
+}
+
+.eye-phrase-spoken {
+  margin-left: auto;
+  background: #DCFCE7;
+  color: #166534;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+}
+
+.eye-phrases-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+  gap: 10px;
+}
+
+.eye-phrase-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 64px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 2px solid #134E32;
+  background: #EAF3ED;
+  color: #0E3D27;
+  font-weight: 800;
+  font-size: clamp(0.95rem, 1.25vw, 1.12rem);
+  cursor: pointer;
+}
+
+.eye-phrase-btn.is-urgent {
+  border-color: #DC2626;
+  background: #FEE2E2;
+  color: #991B1B;
+}
+
+.eye-kbd-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.eye-kbd-preview {
+  flex: 1 1 200px;
+  min-height: 54px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 2px solid #CBD5E1;
+  background: #F8FAFC;
+  font-size: clamp(1rem, 1.4vw, 1.2rem);
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.eye-kbd-placeholder {
+  color: #64748B;
+  font-weight: 500;
+}
+
+.eye-kbd-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 64px;
+  min-height: 64px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 2px solid #DC2626;
+  background: #FEE2E2;
+  color: #991B1B;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.eye-kbd-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.eye-kbd-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.eye-kbd-key {
+  flex: 1 1 clamp(46px, 7.5vw, 72px);
+  min-width: 48px;
+  max-width: 82px;
+  min-height: 64px;
+  border-radius: 12px;
+  border: 2px solid #94A3B8;
+  background: #F8FAFC;
+  color: #0F172A;
+  font-size: clamp(1rem, 1.4vw, 1.25rem);
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.eye-kbd-key.wide {
+  flex: 1.5 1 110px;
+  max-width: 150px;
+}
+
+.eye-kbd-key.xwide {
+  flex: 2.5 1 150px;
+  max-width: 240px;
+}
+
+.eye-kbd-key.active,
+.eye-kbd-key.submit {
+  background: #134E32;
+  color: #FFFFFF;
+  border-color: #0E3D27;
+}
+
+/* Eye Agent Panel Large Readable Output */
+.eye-agent-prompts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.eye-agent-chip {
+  min-height: 64px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 2px solid #0E3D27;
+  background: #EAF3ED;
+  color: #0E3D27;
+  font-weight: 700;
+  font-size: clamp(0.95rem, 1.3vw, 1.12rem);
+  text-align: left;
+  cursor: pointer;
+}
+
+.eye-agent-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.eye-agent-input {
+  flex: 1 1 220px;
+  min-height: 64px;
+  padding: 12px 16px;
+  border: 2px solid #94A3B8;
+  border-radius: 12px;
+  font-size: clamp(1rem, 1.35vw, 1.2rem);
+}
+
+.eye-agent-response {
+  border-radius: 16px;
+  padding: clamp(14px, 2.2vw, 22px);
+  border: 3px solid #134E32;
+  background: #F0FDF4;
+}
+
+.eye-agent-response.is-emergency {
+  border-color: #DC2626;
+  background: #FEF2F2;
+}
+
+.eye-agent-resp-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.eye-agent-condition {
+  margin: 0;
+  font-size: clamp(1.2rem, 2vw, 1.55rem);
+  color: #0F172A;
+}
+
+.eye-agent-curability {
+  font-weight: 800;
+  font-size: clamp(0.95rem, 1.3vw, 1.15rem);
+  color: #0E3D27;
+}
+
+.eye-agent-advice {
+  font-size: clamp(1.08rem, 1.6vw, 1.35rem);
+  line-height: 1.55;
+  margin: 0 0 12px;
+  color: #1E293B;
+}
+
+.eye-agent-solutions {
+  margin: 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: clamp(1rem, 1.5vw, 1.25rem);
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .eye-scroll-dock {
+    left: 8px;
+    bottom: 8px;
+  }
+  .eye-sos-fab {
+    right: 8px;
+    bottom: 8px;
+    padding: 10px 14px;
+    min-width: 82px;
+    min-height: 68px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eye-gaze-cursor,
+  .eye-snap-highlight,
+  .eye-calibration-dot {
+    transition: none !important;
+    animation: none !important;
+  }
+}

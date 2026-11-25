@@ -162,3 +162,34 @@ git add .
 git commit -m "feat: improve voice synthesis rate for Hindi"
 git push origin dev1-buttons
 ```
+
+
+---
+
+## Eye-Gesture Accessibility Mode (Hands-Free Navigation)
+
+Sanjeevani includes an optional **Eye Control Mode** built for paralyzed and motor-impaired users, powered lazily by `@mediapipe/tasks-vision` (`FaceLandmarker` with 478 iris/face landmarks and blendshapes). It runs **100% on-device** in the browser and is **OFF by default**.
+
+### Setup & Consent
+1. Click the **Eye Control** toggle button in the top navigation bar on any page.
+2. Review and accept the **On-Device Camera Consent** dialog (no video frames are ever stored or uploaded).
+3. The local MediaPipe Face Landmarker model (`public/mediapipe/face_landmarker.task` + WASM) loads lazily on demand without slowing initial page load.
+
+### 9-Point Calibration
+- When first enabled (or anytime via **Recalibrate** in the top Eye Bar / Settings), look naturally at each of the **9 screen target dots** (`Top Left` to `Bottom Right`) as the circular progress ring fills.
+- Calibration fits a regularized ridge regression model combining normalized iris position and subtle head pose (yaw/pitch) and persists it in `localStorage`.
+
+### Supported Eye Gestures & Selection Modes
+- **Dwell Click (Default):** Hold gaze over any interactive element (buttons snap magnetically within `~80px`) until the circular dwell ring completes (`1.2s` default, adjustable `0.6s–3.0s`).
+- **Blink Click (Optional):** Deliberately hold a blink for `500–800ms` (configurable), or perform a **double blink** within `600ms`. Natural involuntary blinks (`< 300ms`) are ignored, with cooldown protection against double triggers.
+- **Scanning Mode (Fallback):** Cycles through focusable targets one by one at an adjustable interval (`1.0s–3.5s`); a single deliberate blink selects the focused item.
+- **Pause / Resume (2s Eyes Closed):** Shut both eyes continuously for **2 seconds** to pause tracking (and again for 2s to resume). No clicks can fire while paused.
+- **Scrolling:** Use the pinned large **Scroll Up / Scroll Down** gaze buttons or look briefly into the top/bottom screen edge.
+- **Gaze Keyboard & Quick Phrases:** Dwelling on any text input automatically opens a large dwell keyboard + spoken quick phrases (`Call nurse`, `I need water`, `I'm in pain`, `Emergency`) via Web Speech API.
+- **Emergency SOS (2s Dwell):** An always-visible large **SOS** corner button requires a continuous `2s` dwell to trigger Sanjeevani's emergency alarm flow.
+- **Talk to Agent:** Opens the high-contrast voice/text AI Diagnosis panel and reads responses aloud cleanly.
+
+### Known Limitations
+- **Ambient Lighting:** Dim or strongly backlit rooms degrade iris tracking (`Too dark` warning appears; turn on soft front lighting).
+- **Eyewear & Glare:** Heavy dark-rimmed glasses or strong screen reflections over pupils can partially occlude iris landmarks and reduce gaze precision; **Scanning Mode** is built as a reliable fallback.
+- **Webcam Resolution & FOV:** Consumer 720p webcams work best at an arm's length distance (`45–70cm`) centered at eye height (`Move closer` banner alerts if distance is too far).

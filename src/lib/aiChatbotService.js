@@ -274,10 +274,8 @@ function analyzeSymptomsOffline(query = '', activeSymptoms = []) {
  * Primary function to analyze symptoms, predict root cause, evaluate curability,
  * and provide solutions or dispatch alerts.
  *
- * @param {string} userQuery - The question or symptom description entered by user
- * @param {Array<string>} activeSymptoms - Currently active symptoms in patient record
- * @param {object} patientMeta - Patient metadata { name, age, language, medicines }
- * @returns {Promise<object>} Chatbot diagnostic result
+ * @param {{ userQuery?: string, activeSymptoms?: Array<string>, patientMeta?: Record<string, any> }} options
+ * @returns {Promise<{ condition: string, curability: string, isEmergency: boolean, alertTitle: string, alertMessage: string, solutions: Array<string>, recommendedDoctorSpecialty: string, patientFriendlyAdvice?: string }>} Chatbot diagnostic result
  */
 export async function analyzeSymptomsWithAi({
   userQuery = '',
