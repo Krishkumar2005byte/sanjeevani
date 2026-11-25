@@ -25,6 +25,7 @@ import UrgencyBadge from '../components/UrgencyBadge.jsx';
 import WarningBox from '../components/WarningBox.jsx';
 import WebcamGesture from '../components/WebcamGesture.jsx';
 import Icon from '../components/Icons.jsx';
+import AiHealthChatbot from '../components/AiHealthChatbot.jsx';
 
 export default function Patient() {
   const [langCode, setLangCode] = useState('hi');
@@ -39,6 +40,7 @@ export default function Patient() {
   const [alertNotification, setAlertNotification] = useState(null);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [showChatbot, setShowChatbot] = useState(false);
   const speakTimerRef = useRef(null);
 
   const [profileForm, setProfileForm] = useState({
@@ -301,6 +303,16 @@ export default function Patient() {
             </button>
           </span>
 
+          <button
+            type="button"
+            className={`btn-ai-assistant-toggle ${showChatbot ? 'active' : ''}`}
+            onClick={() => setShowChatbot((prev) => !prev)}
+            title="Open AI Symptom & Disease Chatbot"
+          >
+            <span>🤖</span>
+            <span>{showChatbot ? 'Hide AI Chatbot' : 'AI Health Assistant'}</span>
+          </button>
+
           <button type="button" className="sos" onClick={handleEmergencyClick}>
             <Icon name="siren" />
             <span>Emergency Help</span>
@@ -311,6 +323,18 @@ export default function Patient() {
 
       {/* Main Two-Column Patient Workspace */}
       <div className="page-wrap wide">
+        {/* AI Health Diagnosis Chatbot (Patient View) */}
+        {showChatbot && (
+          <div style={{ marginBottom: '24px' }}>
+            <AiHealthChatbot
+              patientRecord={patientRecord}
+              activeSymptoms={activeSymptoms}
+              userRole="patient"
+              onClose={() => setShowChatbot(false)}
+            />
+          </div>
+        )}
+
         {/* RED CRITICAL ALERT BANNER (Emergency or High Urgency symptoms only) */}
         {(emergencyActive || urgencyKey === 'high') && (
           <div className="alert-banner emergency" role="alert">

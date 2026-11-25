@@ -18,6 +18,7 @@ import UrgencyBadge from '../components/UrgencyBadge.jsx';
 import WarningBox from '../components/WarningBox.jsx';
 import DoctorCard from '../components/DoctorCard.jsx';
 import Icon from '../components/Icons.jsx';
+import AiHealthChatbot from '../components/AiHealthChatbot.jsx';
 
 const SPECIALTIES = [
   'All',
@@ -36,6 +37,7 @@ export default function Caregiver() {
   const [selectedSpecialty, setSelectedSpecialty] = useState('All');
   const [bookingLoading, setBookingLoading] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [showAiChatbot, setShowAiChatbot] = useState(false);
   const [langCode, setLangCode] = useState(() => localStorage.getItem('sanjeevani_lang_code') || 'hi');
   const doctorSectionRef = useRef(null);
 
@@ -112,10 +114,36 @@ export default function Caregiver() {
 
   return (
     <div className="page-wrap">
-      <h1 className="page-h1 hi">{ui.caregiverLiveTitle}</h1>
-      <p className="sub">
-        {patient.name}, {patient.age} yrs ({patient.gender || 'Male'}) · {patient.roomNo || 'Ward 4B - Bed 12'}
-      </p>
+      <div className="caregiver-top-header-flex">
+        <div>
+          <h1 className="page-h1 hi">{ui.caregiverLiveTitle}</h1>
+          <p className="sub">
+            {patient.name}, {patient.age} yrs ({patient.gender || 'Male'}) · {patient.roomNo || 'Ward 4B - Bed 12'}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          className={`btn-ai-assistant-toggle ${showAiChatbot ? 'active' : ''}`}
+          onClick={() => setShowAiChatbot((prev) => !prev)}
+          title="Open AI Diagnostic & Curability Chatbot"
+        >
+          <span>🤖</span>
+          <span>{showAiChatbot ? 'Hide AI Diagnostic Bot' : 'AI Diagnostic Chatbot'}</span>
+        </button>
+      </div>
+
+      {/* AI Health Diagnosis Chatbot (Caregiver Mode) */}
+      {showAiChatbot && (
+        <div style={{ marginBottom: '20px' }}>
+          <AiHealthChatbot
+            patientRecord={patient}
+            activeSymptoms={symptoms}
+            userRole="caregiver"
+            onClose={() => setShowAiChatbot(false)}
+          />
+        </div>
+      )}
 
       {patient.quickAlert && (
         <div className="alert-banner calm" role="status">
