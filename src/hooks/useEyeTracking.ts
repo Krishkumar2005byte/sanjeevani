@@ -39,6 +39,8 @@ export interface UseEyeTrackingOptions {
   paused: boolean;
   calibration: CalibrationModel | null;
   settings: EyeSettings;
+  externalVideoEl?: HTMLVideoElement | null;
+  externalCameraReady?: boolean;
   onPauseToggle: () => void;
   onBlinkAction: () => void;
 }
@@ -74,6 +76,8 @@ export function useEyeTracking({
   paused,
   calibration,
   settings,
+  externalVideoEl,
+  externalCameraReady = false,
   onPauseToggle,
   onBlinkAction,
 }: UseEyeTrackingOptions): UseEyeTrackingResult {
@@ -205,62 +209,72 @@ export function useEyeTracking({
 
     let cancelled = false;
 
+    let ownsStream = false;
+
     async function initEyeControl() {
       lastFaceSeenAtRef.current = Date.now();
       setCondition('loading');
       setErrorMessage(null);
 
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        setCondition('no_camera');
-        setErrorMessage('Camera API is unavailable in this browser. Standard inputs remain active.');
-        return;
-      }
-
-      let stream: MediaStream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: 'user',
-            width: { ideal: 640 },
-            height: { ideal: 480 },
-          },
-          audio: false,
-        });
-      } catch (err) {
-        if (cancelled) return;
-        const name = err instanceof Error ? err.name : '';
-        if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
-          setCondition('camera_blocked');
-          setErrorMessage('Camera permission blocked. Enable permission or use normal touch/mouse input.');
-        } else {
-          setCondition('no_camera');
-          setErrorMessage('No webcam found. Continuing cleanly with standard input.');
+      if (externalVideoEl) {
+        if (!externalCameraReady) {
+          return;
         }
-        return;
-      }
+        setCameraActive(true);
+      } else {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          setCondition('no_camera');
+          setErrorMessage('Camera API is unavailable in this browser. Standard inputs remain active.');
+          return;
+        }
 
-      if (cancelled) {
-        stream.getTracks().forEach((t) => t.stop());
-        return;
-      }
+        let stream: MediaStream;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: 'user',
+              width: { ideal: 640 },
+              height: { ideal: 480 },
+            },
+            audio: false,
+          });
+        } catch (err) {
+          if (cancelled) return;
+          const name = err instanceof Error ? err.name : '';
+          if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+            setCondition('camera_blocked');
+            setErrorMessage('Camera permission blocked. Enable permission or use normal touch/mouse input.');
+          } else {
+            setCondition('no_camera');
+            setErrorMessage('No webcam found. Continuing cleanly with standard input.');
+          }
+          return;
+        }
 
-      streamRef.current = stream;
-      setCameraActive(true);
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
 
-      let videoEl = videoRef.current;
-      if (!videoEl) {
-        videoEl = document.createElement('video');
-        videoEl.playsInline = true;
-        videoEl.muted = true;
-        videoEl.autoplay = true;
-        (videoRef as React.MutableRefObject<HTMLVideoElement | null>).current = videoEl;
-      }
-      videoEl.srcObject = stream;
+        ownsStream = true;
+        streamRef.current = stream;
+        setCameraActive(true);
 
-      try {
-        await videoEl.play();
-      } catch {
-        // ignore muted autoplay warning
+        let ownVideo = videoRef.current;
+        if (!ownVideo) {
+          ownVideo = document.createElement('video');
+          ownVideo.playsInline = true;
+          ownVideo.muted = true;
+          ownVideo.autoplay = true;
+          (videoRef as React.MutableRefObject<HTMLVideoElement | null>).current = ownVideo;
+        }
+        ownVideo.srcObject = stream;
+
+        try {
+          await ownVideo.play();
+        } catch {
+          // ignore muted autoplay warning
+        }
       }
 
       try {
@@ -339,7 +353,7 @@ export function useEyeTracking({
         }
         lastFrameTsRef.current = now;
 
-        const video = videoRef.current;
+        const video = externalVideoEl ?? videoRef.current;
         const landmarker = landmarkerRef.current;
         if (!video || !landmarker || video.readyState < 2) {
           return;
@@ -512,9 +526,27 @@ export function useEyeTracking({
     return () => {
       cancelled = true;
       document.removeEventListener('visibilitychange', handleVisibility);
-      stopResources();
+      if (ownsStream) {
+        stopResources();
+      } else {
+        if (rafRef.current !== null) {
+          cancelAnimationFrame(rafRef.current);
+          rafRef.current = null;
+        }
+        if (landmarkerRef.current) {
+          try {
+            landmarkerRef.current.close();
+          } catch {
+            // ignore
+          }
+          landmarkerRef.current = null;
+        }
+        setModelReady(false);
+        setGazePoint(null);
+        setFeatures(null);
+      }
     };
-  }, [enabled, consentGranted, checkAmbientLuminance, stopResources]);
+  }, [enabled, consentGranted, externalVideoEl, externalCameraReady, checkAmbientLuminance, stopResources]);
 
   const isTracking = enabled && consentGranted;
 

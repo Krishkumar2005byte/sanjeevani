@@ -1,3 +1,22 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
 /* ==========================================================================
    styles.css - Sanjeevani UI Design System & Button Styles (Member 4)
    Calm Light Editorial Healthcare Theme
@@ -7,6 +26,21 @@
 
 :root {
   color-scheme: light;
+  --background: #F3F5F3;
+  --foreground: #161B18;
+  --primary: #134E32;
+  --primary-foreground: #FFFFFF;
+  --secondary: #EAF3ED;
+  --secondary-foreground: #134E32;
+  --muted: #E2E7E3;
+  --muted-foreground: #4F5B54;
+  --accent: #EAF3ED;
+  --accent-foreground: #134E32;
+  --destructive: #DC2626;
+  --border: #E2E7E3;
+  --input: #E2E7E3;
+  --ring: #134E32;
+
   --bg: #F3F5F3;
   --card: #FFFFFF;
   --line: #E2E7E3;

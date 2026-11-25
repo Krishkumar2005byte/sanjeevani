@@ -190,3 +190,29 @@ Sanjeevani includes an optional **Eye Control Mode** scoped specifically to the 
 - **Ambient Lighting:** Dim or strongly backlit rooms degrade iris tracking (`Too dark` warning appears; turn on soft front lighting).
 - **Eyewear & Glare:** Heavy dark-rimmed glasses or strong screen reflections over pupils can partially occlude iris landmarks and reduce gaze precision; **Scanning Mode** is built as a reliable fallback.
 - **Webcam Resolution & FOV:** Consumer 720p webcams work best at an arm's length distance (`45–70cm`) centered at eye height (`Move closer` banner alerts if distance is too far).
+
+
+---
+
+## Part E: Modes, Role Route Guards, Unified Input (Eye + Hand Gestures) & Emergency Contacts
+
+### 1. Care Modes & Protected Role Dashboards
+- **Entry Screen (`/`)**: Choose between **Home Mode** (`/home/patient`, `/home/caretaker`) and **Hospital Mode** (`/hospital/patient`, `/hospital/doctor`, `/hospital/nurse`) with persistent `ModeProvider` + `Switch Mode / Role` header control.
+- **Route Guards (`RoleRouteGuard`) & Staff Auth**: Users cannot jump directly into another role's private dashboard URL. **Hospital Doctor** and **Hospital Nurse** include a mock Staff ID + PIN verification dialog before entering.
+- **Permissions (`src/lib/permissions.ts`)**: Emergency contacts are editable strictly by **Home Caretaker** or **Hospital Nurse**, and read-only for Patients.
+
+### 2. Unified Biometric Input (`Eye + Hand Gestures` on 1 Shared Camera)
+Available on both Patient views (`/home/patient` and `/hospital/patient`) as well as `/patient`:
+- **Eye Control:** 9-point calibration + Double-Blink to select + 2s closed-eyes pause.
+- **Hand Gesture Control (lazy MediaPipe `HandLandmarker`, shares Eye Control webcam stream):**
+  - **Index Finger Pointing:** Moves cursor smoothly with One Euro tremor filter & 80px magnetic snapping.
+  - **Pinch (Thumb + Index):** Click/Select with debounce.
+  - **Open Palm (held 1s):** Pause / Resume tracking.
+  - **Thumbs Up:** Sends `"I'm okay"` check-in to Caretaker or Nurse dashboard.
+  - **Closed Fist (held 2s):** Triggers Emergency SOS countdown flow.
+
+### 3. Emergency Numbers & Backend Boundaries
+- **Regional Verification Note:** Default numbers (`108`, `102`, `112`) are Indian emergency helplines. Verify local emergency numbers for your region before deployment.
+- **Mocked Components vs Real Backend Replacement:**
+  - `src/lib/data/sanjeevaniStore.ts` (`localStorage` + `CustomEvent` pub-sub) mocks multi-user real-time alerts, nurse task queues, and emergency contacts. Replace its adapters with Firebase Realtime/Firestore listeners, Supabase Realtime, or REST/WebSockets.
+  - `src/components/modes/ModeProvider.tsx` uses mock role/PIN auth (`MockAuthSession`) ready for Firebase Auth, Supabase Auth, or NextAuth/OAuth replacement.

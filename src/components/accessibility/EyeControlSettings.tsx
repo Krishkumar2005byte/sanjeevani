@@ -7,6 +7,8 @@ import React from 'react';
 import { Sliders, X, RotateCcw, Minus, Plus } from 'lucide-react';
 import { DEFAULT_EYE_SETTINGS } from '../../types/eyeControl';
 import type { EyeSettings } from '../../types/eyeControl';
+import { useEyeControl } from './eyeControlContext';
+import type { TremorTolerance } from './eyeControlContext';
 
 export interface EyeControlSettingsProps {
   visible: boolean;
@@ -37,6 +39,7 @@ export const EyeControlSettings: React.FC<EyeControlSettingsProps> = ({
   onRecalibrate,
   onClose,
 }) => {
+  const { tremorTolerance, setTremorTolerance } = useEyeControl();
   if (!visible) return null;
 
   const update = (patch: Partial<EyeSettings>) => {
@@ -217,6 +220,22 @@ export const EyeControlSettings: React.FC<EyeControlSettingsProps> = ({
           </div>
 
           {/* Navigation Helpers */}
+          <div className="eye-setting-group">
+            <h3>Tremor Tolerance (Hand Pinch &amp; Snap)</h3>
+            <div className="eye-choice-row">
+              {(['standard', 'high', 'max'] as TremorTolerance[]).map((lvl) => (
+                <button
+                  key={lvl}
+                  type="button"
+                  className={`eye-choice-btn ${tremorTolerance === lvl ? 'is-selected' : ''}`}
+                  onClick={() => setTremorTolerance(lvl)}
+                >
+                  {lvl.charAt(0).toUpperCase() + lvl.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="eye-setting-group">
             <h3>Navigation &amp; Voice</h3>
             <div className="eye-toggle-row">

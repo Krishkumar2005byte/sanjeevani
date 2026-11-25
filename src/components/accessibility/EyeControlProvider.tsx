@@ -1,16 +1,13 @@
 /**
- * EyeControlProvider.tsx - Application-wide Eye-Gesture Accessibility Context & Overlay Controller
- * - OFF by default; asks explicit user consent before opening local webcam
- * - Lazy-loads @mediapipe/tasks-vision FaceLandmarker only when activated
- * - Supports Dwell Click (default 1.2s, 2.0s on SOS), Blink/Double-Blink Click, Scanning Mode,
- *   2s Eyes-Closed Pause/Resume, Magnetic Target Snapping (~80px), Auto Edge-Scroll & Scroll Buttons,
- *   On-Screen Gaze Keyboard & Quick Phrases, AI Voice Agent Panel, and Gaze-Accessible Settings
+ * EyeControlProvider.tsx - Unified Patient Accessibility Controller (Part D Eye + Part E Hand Gestures + SOS Countdown)
+ * Reuses useInputManager (single shared webcam stream for Eye + Hand) without duplicating tracking logic!
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Eye,
   EyeOff,
+  Hand,
   Pause,
   Play,
   Sliders,
@@ -22,29 +19,36 @@ import {
   AlertOctagon,
   ShieldCheck,
   AlertTriangle,
+  ThumbsUp,
 } from 'lucide-react';
-import { useEyeTracking } from '../../hooks/useEyeTracking';
+import { useInputManager } from '../../hooks/useInputManager';
 import {
   EYE_SETTINGS_STORAGE_KEY,
   clearCalibration,
   loadSavedCalibration,
   saveCalibration,
 } from '../../lib/eyeCalibration';
-import { triggerEmergency, setQuickAlert } from '../../lib/patientService.js';
+import {
+  getStoreSnapshot,
+  sendCheckInOk,
+  subscribeToStore,
+} from '../../lib/data/sanjeevaniStore';
 import { speak } from '../../lib/speech.js';
 import { DEFAULT_EYE_SETTINGS } from '../../types/eyeControl';
 import type { CalibrationModel, EyeSettings } from '../../types/eyeControl';
+import type { AppMode, EmergencyContact } from '../../lib/data/types';
 import { EyeControlContext } from './eyeControlContext';
-import type { EyeControlContextValue } from './eyeControlContext';
+import type { EyeControlContextValue, TremorTolerance } from './eyeControlContext';
 import { GazeCursor } from './GazeCursor';
 import { CalibrationScreen } from './CalibrationScreen';
 import { GazeKeyboard } from './GazeKeyboard';
 import { EyeControlSettings } from './EyeControlSettings';
 import { EyeAgentPanel } from './EyeAgentPanel';
+import { SosCountdownOverlay } from '../emergency/SosCountdownOverlay';
 
 const SNAP_RADIUS_PX = 80;
 const SOS_DWELL_MS = 2000;
-const EDGE_SCROLL_ZONE = 0.085; // top/bottom 8.5% of viewport
+const EDGE_SCROLL_ZONE = 0.085;
 
 function loadSettings(): EyeSettings {
   try {
@@ -95,9 +99,16 @@ function distanceToRect(px: number, py: number, rect: DOMRect): number {
   return Math.hypot(dx, dy);
 }
 
-export const EyeControlProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Always OFF by default as required
-  const [enabled, setEnabled] = useState(false);
+export const EyeControlProvider: React.FC<{
+  children: React.ReactNode;
+  mode?: AppMode;
+}> = ({ children, mode = 'home' }) => {
+  const [eyeEnabled, setEyeEnabled] = useState(false);
+  const [handEnabled, setHandEnabled] = useState(false);
+  const [pendingStartMode, setPendingStartMode] = useState<'eye' | 'hand' | 'both'>('eye');
+
+  const enabled = eyeEnabled || handEnabled;
+
   const [consentModalOpen, setConsentModalOpen] = useState(false);
   const [consentGranted, setConsentGranted] = useState(false);
   const [paused, setPaused] = useState(false);
@@ -106,12 +117,22 @@ export const EyeControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [agentOpen, setAgentOpen] = useState(false);
   const [activeInputEl, setActiveInputEl] = useState<HTMLInputElement | HTMLTextAreaElement | null>(null);
-  const [sosNotice, setSosNotice] = useState<string | null>(null);
+
+  const [sosCountdownOpen, setSosCountdownOpen] = useState(false);
+  const [sosTriggerSource, setSosTriggerSource] = useState('Patient SOS Button');
+  const [checkInToast, setCheckInToast] = useState<string | null>(null);
+  const [contacts, setContacts] = useState<EmergencyContact[]>(() => getStoreSnapshot().contacts);
 
   const [settings, setSettings] = useState<EyeSettings>(loadSettings);
+  const [tremorTolerance, setTremorTolerance] = useState<TremorTolerance>('high');
   const [calibration, setCalibration] = useState<CalibrationModel | null>(loadSavedCalibration);
 
-  // Persist settings
+  useEffect(() => {
+    return subscribeToStore((state) => {
+      setContacts(state.contacts);
+    });
+  }, []);
+
   const handleSettingsChange = useCallback((next: EyeSettings) => {
     setSettings(next);
     try {
@@ -121,7 +142,7 @@ export const EyeControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }, []);
 
-  // Apply root attribute for Eye-Friendly UI scaling (minimum 64x64 targets, high-contrast focus)
+  // Scale targets globally to 64x64px+ whenever Eye OR Hand biometric mode is active
   useEffect(() => {
     const root = document.documentElement;
     if (enabled) {
@@ -132,7 +153,6 @@ export const EyeControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return () => root.removeAttribute('data-eye-mode');
   }, [enabled]);
 
-  // Dwell & magnetic snap state
   const [snappedElement, setSnappedElement] = useState<HTMLElement | null>(null);
   const [snappedRect, setSnappedRect] = useState<DOMRect | null>(null);
   const [dwellProgress, setDwellProgress] = useState(0);
@@ -153,30 +173,46 @@ export const EyeControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     calibrationOpenRef.current = calibrationOpen;
   }, [settings, paused, calibrationOpen]);
 
-  const activateTarget = useCallback((el: HTMLElement | null) => {
-    if (!el || !document.contains(el)) return;
-
-    // Text input / textarea opens GazeKeyboard seamlessly
-    if (
-      (el instanceof HTMLInputElement && el.type !== 'submit' && el.type !== 'button' && el.type !== 'checkbox' && el.type !== 'radio') ||
-      el instanceof HTMLTextAreaElement
-    ) {
-      el.focus();
-      setActiveInputEl(el);
-      setKeyboardOpen(true);
-      return;
-    }
-
-    el.focus();
-    el.click();
+  const triggerSosCountdown = useCallback((source = 'SOS Button') => {
+    setSosTriggerSource(source);
+    setSosCountdownOpen(true);
   }, []);
+
+  const activateTarget = useCallback(
+    (el: HTMLElement | null) => {
+      if (!el || !document.contains(el)) return;
+
+      if (el.dataset.eyeSos === 'true') {
+        triggerSosCountdown('Biometric SOS Trigger');
+        return;
+      }
+
+      if (
+        (el instanceof HTMLInputElement &&
+          el.type !== 'submit' &&
+          el.type !== 'button' &&
+          el.type !== 'checkbox' &&
+          el.type !== 'radio') ||
+        el instanceof HTMLTextAreaElement
+      ) {
+        el.focus();
+        setActiveInputEl(el);
+        setKeyboardOpen(true);
+        return;
+      }
+
+      el.focus();
+      el.click();
+    },
+    [triggerSosCountdown]
+  );
 
   const handlePauseToggle = useCallback(() => {
     setPaused((prev) => {
       const next = !prev;
       if (settingsRef.current.voiceFeedback) {
         try {
-          speak(next ? 'Eye control paused.' : 'Eye control resumed.', 'en-IN');
+          speak(next ? 'Control paused.' : 'Control resumed.', 'en-IN');
         } catch {
           // ignore
         }
@@ -185,49 +221,61 @@ export const EyeControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     });
   }, []);
 
-  const handleBlinkAction = useCallback(() => {
-    if (pausedRef.current || calibrationOpenRef.current) return;
-    if (snappedElementRef.current) {
-      activateTarget(snappedElementRef.current);
+  const handleThumbsUpOk = useCallback(() => {
+    void sendCheckInOk(mode, 'good', "I'm okay (Thumbs-Up Gesture)");
+    setCheckInToast(`Sent "I'm okay" check-in to ${mode === 'hospital' ? 'Nurse Station' : 'Caretaker'}!`);
+    try {
+      speak("I'm okay check-in sent.", 'en-IN');
+    } catch {
+      // ignore
     }
-  }, [activateTarget]);
+    window.setTimeout(() => setCheckInToast(null), 4000);
+  }, [mode]);
 
   const {
-    gazePoint,
-    features,
-    condition,
-    modelReady,
+    activeSource,
+    cursorPoint,
     cameraActive,
+    cameraError,
+    eyeFeatures,
+    eyeCondition,
+    eyeModelReady,
     blinkStage,
     pauseHoldProgress,
-    errorMessage,
-  } = useEyeTracking({
-    enabled,
+    handCondition,
+    activeHandGesture,
+    fistSosProgress,
+  } = useInputManager({
+    eyeEnabled,
+    handEnabled,
     consentGranted,
     paused,
     calibration,
-    settings,
+    eyeSettings: settings,
+    tremorTolerance,
+    snappedTargetRef: snappedElementRef,
     onPauseToggle: handlePauseToggle,
-    onBlinkAction: handleBlinkAction,
+    onSelectTarget: activateTarget,
+    onThumbsUpOk: handleThumbsUpOk,
+    onTriggerSos: triggerSosCountdown,
   });
 
-  // Update magnetic snapping, dwell timer, and auto edge-scroll whenever gaze updates
+  // Unified magnetic target snapping + optional dwell timer + auto edge-scroll
   useEffect(() => {
-    if (!enabled || !consentGranted || paused || calibrationOpen || settings.scanningEnabled || !gazePoint) {
+    if (!enabled || !consentGranted || paused || calibrationOpen || settings.scanningEnabled || !cursorPoint) {
       snappedElementRef.current = null;
       return;
     }
 
     const now = performance.now();
 
-    // Auto edge scrolling when looking at top or bottom edges
     if (settings.edgeScrollEnabled) {
       const vh = window.innerHeight || 720;
       const topLimit = vh * EDGE_SCROLL_ZONE;
       const bottomLimit = vh * (1 - EDGE_SCROLL_ZONE);
       let dir: 'up' | 'down' | null = null;
-      if (gazePoint.y <= topLimit) dir = 'up';
-      else if (gazePoint.y >= bottomLimit) dir = 'down';
+      if (cursorPoint.y <= topLimit) dir = 'up';
+      else if (cursorPoint.y >= bottomLimit) dir = 'down';
 
       if (dir !== edgeLookStartRef.current.dir) {
         edgeLookStartRef.current = { dir, at: now };
@@ -236,15 +284,15 @@ export const EyeControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
     }
 
-    // Find nearest interactive element within 80px magnetic radius
+    const effectiveSnapRadius = tremorTolerance === 'max' ? 110 : tremorTolerance === 'high' ? 95 : SNAP_RADIUS_PX;
     const candidates = getInteractiveElements();
     let bestEl: HTMLElement | null = null;
-    let bestDist = SNAP_RADIUS_PX;
+    let bestDist = effectiveSnapRadius;
     let bestRect: DOMRect | null = null;
 
     for (const el of candidates) {
       const rect = el.getBoundingClientRect();
-      const d = distanceToRect(gazePoint.x, gazePoint.y, rect);
+      const d = distanceToRect(cursorPoint.x, cursorPoint.y, rect);
       if (d < bestDist) {
         bestDist = d;
         bestEl = el;
@@ -264,7 +312,6 @@ export const EyeControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         if (settings.dwellEnabled) {
           const isSos = bestEl.dataset.eyeSos === 'true';
           const targetDwellMs = isSos ? SOS_DWELL_MS : settings.dwellTimeMs;
-
           const justClickedSame =
             lastClickedElRef.current.el === bestEl && now - lastClickedElRef.current.at < 1400;
 
@@ -272,7 +319,6 @@ export const EyeControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             const elapsed = now - dwellStartTsRef.current;
             const pct = Math.min(1, elapsed / targetDwellMs);
             setDwellProgress(pct);
-
             if (pct >= 1) {
               lastClickedElRef.current = { el: bestEl, at: now };
               dwellStartTsRef.current = now;
@@ -301,11 +347,12 @@ export const EyeControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     settings.dwellEnabled,
     settings.dwellTimeMs,
     settings.edgeScrollEnabled,
-    gazePoint,
+    tremorTolerance,
+    cursorPoint,
     activateTarget,
   ]);
 
-  // Scanning fallback mode: highlight focusable elements one by one
+  // Scanning fallback mode
   useEffect(() => {
     if (!enabled || !consentGranted || paused || calibrationOpen || !settings.scanningEnabled) {
       return;
@@ -328,28 +375,64 @@ export const EyeControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return () => window.clearInterval(timer);
   }, [enabled, consentGranted, paused, calibrationOpen, settings.scanningEnabled, settings.scanSpeedMs]);
 
-  const requestEnable = useCallback(() => {
-    if (consentGranted) {
-      setEnabled(true);
+  const applyModeSelection = useCallback(
+    (which: 'eye' | 'hand' | 'both') => {
+      const wantEye = which === 'eye' || which === 'both';
+      const wantHand = which === 'hand' || which === 'both';
+      setEyeEnabled(wantEye);
+      setHandEnabled(wantHand);
       setPaused(false);
+      if (wantEye && !calibration) {
+        setCalibrationOpen(true);
+      }
+    },
+    [calibration]
+  );
+
+  const requestEnable = useCallback(
+    (which: 'eye' | 'hand' | 'both' = 'eye') => {
+      if (consentGranted) {
+        applyModeSelection(which);
+      } else {
+        setPendingStartMode(which);
+        setConsentModalOpen(true);
+      }
+    },
+    [consentGranted, applyModeSelection]
+  );
+
+  const toggleEye = useCallback(() => {
+    if (eyeEnabled) {
+      setEyeEnabled(false);
+    } else if (consentGranted) {
+      setEyeEnabled(true);
+      if (!calibration) setCalibrationOpen(true);
     } else {
+      setPendingStartMode(handEnabled ? 'both' : 'eye');
       setConsentModalOpen(true);
     }
-  }, [consentGranted]);
+  }, [eyeEnabled, handEnabled, consentGranted, calibration]);
+
+  const toggleHand = useCallback(() => {
+    if (handEnabled) {
+      setHandEnabled(false);
+    } else if (consentGranted) {
+      setHandEnabled(true);
+    } else {
+      setPendingStartMode(eyeEnabled ? 'both' : 'hand');
+      setConsentModalOpen(true);
+    }
+  }, [eyeEnabled, handEnabled, consentGranted]);
 
   const confirmConsentAndStart = () => {
     setConsentGranted(true);
     setConsentModalOpen(false);
-    setEnabled(true);
-    setPaused(false);
-    // Automatically offer 9-point calibration if user has never calibrated before
-    if (!calibration) {
-      setCalibrationOpen(true);
-    }
+    applyModeSelection(pendingStartMode);
   };
 
   const disable = useCallback(() => {
-    setEnabled(false);
+    setEyeEnabled(false);
+    setHandEnabled(false);
     setPaused(false);
     setCalibrationOpen(false);
     setKeyboardOpen(false);
@@ -358,22 +441,6 @@ export const EyeControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setConsentModalOpen(false);
   }, []);
 
-  const handleSOS = async () => {
-    try {
-      await triggerEmergency();
-      await setQuickAlert('CRITICAL SOS: Patient triggered 2s Eye-Control Emergency!');
-    } catch {
-      // ignore if offline
-    }
-    try {
-      speak('Emergency SOS activated! Caregiver and medical team have been alerted.', 'en-IN');
-    } catch {
-      // ignore
-    }
-    setSosNotice('EMERGENCY SOS SENT — Caregiver alerted immediately.');
-    window.setTimeout(() => setSosNotice(null), 6000);
-  };
-
   const openKeyboard = useCallback((target?: HTMLInputElement | HTMLTextAreaElement | null) => {
     if (target) setActiveInputEl(target);
     setKeyboardOpen(true);
@@ -381,87 +448,80 @@ export const EyeControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const contextValue: EyeControlContextValue = {
     enabled,
+    eyeEnabled,
+    handEnabled,
     paused,
     consentGranted,
+    tremorTolerance,
+    setTremorTolerance,
     requestEnable,
+    toggleEye,
+    toggleHand,
     disable,
     togglePaused: handlePauseToggle,
     openCalibration: () => setCalibrationOpen(true),
     openSettings: () => setSettingsOpen(true),
     openKeyboard,
     openAgent: () => setAgentOpen(true),
+    triggerSosCountdown,
   };
 
-  const statusText = (() => {
-    switch (condition) {
-      case 'loading':
-        return 'Starting local camera & loading MediaPipe FaceLandmarker…';
-      case 'no_face':
-        return 'Face not detected — align face with webcam';
-      case 'too_dark':
-        return 'Too dark — improve room lighting for accurate eye tracking';
-      case 'move_closer':
-        return 'Move closer — bring face nearer to the webcam';
-      case 'camera_blocked':
-        return errorMessage || 'Camera blocked — normal mouse, touch & keyboard remain active';
-      case 'no_camera':
-        return errorMessage || 'No webcam found — normal mouse, touch & keyboard remain active';
-      case 'paused':
-        return 'Paused — Hold both eyes shut for 2s or select Resume';
-      case 'tab_hidden':
-        return 'Tracking paused while tab is hidden';
-      default:
-        return calibration
-          ? 'Tracking Active (On-Device)'
-          : 'Tracking Active — Run 9-Point Calibration for best accuracy';
+  const activeStatusMessage = (() => {
+    if (cameraError) return cameraError;
+    if (paused) return 'Paused — Hold Open Palm (1s) / Both Eyes Closed (2s) or click Resume';
+    if (handEnabled && handCondition === 'too_dark') return 'Too dark — turn on front room lighting';
+    if (eyeEnabled && eyeCondition === 'too_dark') return 'Too dark — turn on front room lighting';
+    if (eyeEnabled && eyeCondition === 'no_face') return 'Face not detected — center face in front of webcam';
+    if (eyeEnabled && eyeCondition === 'move_closer') return 'Move closer — step nearer to webcam';
+    if (handEnabled && handCondition === 'hand_not_detected' && !eyeEnabled) {
+      return 'Hand not detected — show index finger or hand to camera';
     }
+    return `Active (${activeSource === 'hand' ? 'Hand Tracking' : activeSource === 'eye' ? 'Eye Gaze' : 'Shared Camera Ready'}) · Single On-Device Stream`;
   })();
 
   const isInteractiveLoopActive = enabled && consentGranted && !paused && !calibrationOpen;
   const activeSnappedEl = isInteractiveLoopActive ? snappedElement : null;
   const activeSnappedRect = activeSnappedEl ? snappedRect : null;
   const activeDwellProgress = isInteractiveLoopActive && !settings.scanningEnabled ? dwellProgress : 0;
-
   const isEmergencyTarget = activeSnappedEl?.dataset.eyeSos === 'true';
 
-  // Compute snapped highlight visual cursor coordinates when magnetized
   const cursorX =
     activeSnappedEl && activeSnappedRect
       ? activeSnappedRect.left + activeSnappedRect.width / 2
-      : gazePoint?.x ?? -100;
+      : cursorPoint?.x ?? -100;
 
   const cursorY =
     activeSnappedEl && activeSnappedRect
       ? activeSnappedRect.top + activeSnappedRect.height / 2
-      : gazePoint?.y ?? -100;
+      : cursorPoint?.y ?? -100;
 
   return (
     <EyeControlContext.Provider value={contextValue}>
       {children}
 
-      {/* Explicit Privacy & Camera Consent Modal */}
+      {/* On-Device Camera Consent Modal */}
       {consentModalOpen && (
         <div
           className="eye-modal-backdrop"
           role="dialog"
           aria-modal="true"
-          aria-label="Eye Control Privacy Consent"
+          aria-label="Camera Accessibility Privacy Consent"
         >
           <div className="eye-modal-card eye-consent-card">
             <div className="eye-modal-header">
               <div className="eye-modal-title">
                 <ShieldCheck className="w-7 h-7 text-emerald-800" />
-                <h2>Enable Eye-Gesture Accessibility Mode?</h2>
+                <h2>Enable Hands-Free Eye &amp; Hand Control?</h2>
               </div>
             </div>
             <p className="eye-consent-desc">
-              Sanjeevani will access your webcam strictly <strong>on-device</strong> using local MediaPipe Face Landmarker models to track eye gaze and deliberate blinks.
+              Sanjeevani processes webcam video strictly <strong>on-device</strong> using local MediaPipe Face &amp; Hand Landmarkers on a single shared stream.
             </p>
             <ul className="eye-consent-list">
-              <li>Video frames never leave your browser and are never recorded or uploaded.</li>
-              <li>Interactive buttons enlarge to 64×64px minimum with magnetic target snapping.</li>
-              <li><strong>Look at any button and blink twice</strong> to select it cleanly (natural single blinks are ignored).</li>
-              <li>Close both eyes for 2 seconds anytime to pause or resume tracking.</li>
+              <li>Zero video frames are ever stored or uploaded.</li>
+              <li><strong>Eye Mode:</strong> Look at any target and <strong>blink twice</strong> to click (close both eyes 2s to pause).</li>
+              <li><strong>Hand Mode:</strong> Index finger moves cursor, <strong>Pinch</strong> selects, <strong>Open Palm (1s)</strong> pauses, <strong>Thumbs Up</strong> sends &ldquo;I&rsquo;m okay&rdquo;, <strong>Closed Fist (2s)</strong> starts SOS.</li>
+              <li>Normal mouse, touch, and keyboard always remain active.</li>
             </ul>
             <div className="eye-modal-footer">
               <button
@@ -470,7 +530,7 @@ export const EyeControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 onClick={confirmConsentAndStart}
               >
                 <Eye className="w-5 h-5" />
-                <span>I Consent — Enable Camera &amp; Eye Mode</span>
+                <span>I Consent — Start Camera Control</span>
               </button>
               <button
                 type="button"
@@ -484,27 +544,25 @@ export const EyeControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         </div>
       )}
 
-      {/* Active Eye Control HUD Bar, Edge Scroll Controls, SOS, Modals & Gaze Cursor */}
+      {/* Active HUD Bar & Gestures Legend */}
       {enabled && (
         <>
-          {/* Persistent Top Control & Camera-Active Indicator Bar */}
-          <div
-            className="eye-hud-bar"
-            role="region"
-            aria-label="Eye Control Accessibility Bar"
-          >
-            <div className={`eye-hud-status state-${condition}`} aria-live="polite">
+          <div className="eye-hud-bar" role="region" aria-label="Biometric Accessibility Controls">
+            <div className="eye-hud-status" aria-live="polite">
               <span className={`eye-cam-dot ${cameraActive && !paused ? 'live' : ''}`} />
-              <span>
-                {cameraActive ? 'Camera On-Device: ' : ''}
-                {statusText}
-              </span>
+              <span>{activeStatusMessage}</span>
+
               {blinkStage === 1 && (
                 <span className="eye-blink-pill">Blink 1/2 — Blink once more to click!</span>
               )}
               {pauseHoldProgress > 0.05 && (
                 <span className="eye-pause-progress">
-                  Holding eyes closed ({Math.round(pauseHoldProgress * 100)}%)
+                  Pause hold ({Math.round(pauseHoldProgress * 100)}%)
+                </span>
+              )}
+              {fistSosProgress > 0.05 && (
+                <span className="eye-blink-pill" style={{ background: '#DC2626' }}>
+                  Fist SOS ({Math.round(fistSosProgress * 100)}%)
                 </span>
               )}
             </div>
@@ -512,34 +570,51 @@ export const EyeControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             <div className="eye-hud-actions">
               <button
                 type="button"
+                className={`eye-hud-btn ${eyeEnabled ? 'agent' : ''}`}
+                onClick={toggleEye}
+                aria-pressed={eyeEnabled}
+              >
+                <Eye className="w-5 h-5" />
+                <span>Eye {eyeEnabled ? 'ON' : 'OFF'}</span>
+              </button>
+
+              <button
+                type="button"
+                className={`eye-hud-btn ${handEnabled ? 'agent' : ''}`}
+                onClick={toggleHand}
+                aria-pressed={handEnabled}
+              >
+                <Hand className="w-5 h-5" />
+                <span>Hand {handEnabled ? 'ON' : 'OFF'}</span>
+              </button>
+
+              <button
+                type="button"
                 className={`eye-hud-btn ${paused ? 'warn' : ''}`}
                 onClick={handlePauseToggle}
-                aria-label={paused ? 'Resume Eye Tracking' : 'Pause Eye Tracking'}
               >
                 {paused ? <Play className="w-5 h-5" /> : <Pause className="w-5 h-5" />}
                 <span>{paused ? 'Resume' : 'Pause'}</span>
               </button>
 
-              <button
-                type="button"
-                className="eye-hud-btn"
-                onClick={() => {
-                  clearCalibration();
-                  setCalibration(null);
-                  setCalibrationOpen(true);
-                }}
-              >
-                <Crosshair className="w-5 h-5" />
-                <span>{calibration ? 'Recalibrate' : 'Calibrate (9-Pt)'}</span>
-              </button>
+              {eyeEnabled && (
+                <button
+                  type="button"
+                  className="eye-hud-btn"
+                  onClick={() => {
+                    clearCalibration();
+                    setCalibration(null);
+                    setCalibrationOpen(true);
+                  }}
+                >
+                  <Crosshair className="w-5 h-5" />
+                  <span>{calibration ? 'Recalibrate' : 'Calibrate'}</span>
+                </button>
+              )}
 
-              <button
-                type="button"
-                className="eye-hud-btn"
-                onClick={() => setKeyboardOpen((k) => !k)}
-              >
+              <button type="button" className="eye-hud-btn" onClick={() => setKeyboardOpen((k) => !k)}>
                 <Keyboard className="w-5 h-5" />
-                <span>Keyboard &amp; Phrases</span>
+                <span>Keyboard</span>
               </button>
 
               <button
@@ -552,29 +627,44 @@ export const EyeControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 <span>Talk to Agent</span>
               </button>
 
-              <button
-                type="button"
-                className="eye-hud-btn"
-                onClick={() => setSettingsOpen(true)}
-              >
+              <button type="button" className="eye-hud-btn" onClick={() => setSettingsOpen(true)}>
                 <Sliders className="w-5 h-5" />
                 <span>Settings</span>
               </button>
 
-              <button
-                type="button"
-                className="eye-hud-btn exit"
-                onClick={disable}
-                aria-label="Turn Off Eye Control Mode"
-              >
+              <button type="button" className="eye-hud-btn exit" onClick={disable}>
                 <EyeOff className="w-5 h-5" />
-                <span>Exit Eye Mode</span>
+                <span>Exit</span>
               </button>
             </div>
+
+            {/* Hand Gesture Quick Legend Bar when Hand Mode is active */}
+            {handEnabled && (
+              <div className="w-full flex flex-wrap items-center gap-2 pt-2 border-t border-white/15 text-xs font-semibold text-white/90">
+                <span className="px-2.5 py-1 rounded-full bg-white/15">Index Point = Move</span>
+                <span className="px-2.5 py-1 rounded-full bg-white/15">Pinch = Click</span>
+                <span className="px-2.5 py-1 rounded-full bg-white/15">Open Palm 1s = Pause</span>
+                <span className="px-2.5 py-1 rounded-full bg-emerald-700/80">Thumbs Up = &ldquo;I&rsquo;m okay&rdquo;</span>
+                <span className="px-2.5 py-1 rounded-full bg-red-700/90">Closed Fist 2s = SOS</span>
+                {activeHandGesture !== 'none' && (
+                  <span className="ml-auto px-3 py-1 rounded-full bg-amber-300 text-black font-extrabold">
+                    Detected: {activeHandGesture.replace('_', ' ')}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* Dedicated Gaze Scroll Buttons */}
-          <div className="eye-scroll-dock" aria-label="Gaze Scroll Controls">
+          {/* Check-in Toast Notification */}
+          {checkInToast && (
+            <div className="fixed top-28 right-4 z-[9400] bg-emerald-800 text-white px-5 py-3 rounded-2xl shadow-xl font-bold flex items-center gap-2 border-2 border-emerald-300">
+              <ThumbsUp className="w-5 h-5" />
+              <span>{checkInToast}</span>
+            </div>
+          )}
+
+          {/* Dedicated Gaze/Hand Scroll Buttons */}
+          <div className="eye-scroll-dock" aria-label="Scroll Controls">
             <button
               type="button"
               className="eye-scroll-btn"
@@ -594,51 +684,47 @@ export const EyeControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
               <span>Scroll Down</span>
             </button>
           </div>
+        </>
+      )}
 
-          {/* Always-Visible Large Emergency SOS Button */}
-          <button
-            type="button"
-            className="eye-sos-fab"
-            data-eye-sos="true"
-            onClick={() => void handleSOS()}
-            aria-label="Emergency SOS Help (Look and blink twice, or hold gaze for 2 seconds if Dwell enabled)"
-          >
-            <AlertOctagon className="w-7 h-7" />
-            <div className="eye-sos-text">
-              <strong>SOS</strong>
-              <small>{settings.doubleBlinkEnabled ? 'Blink 2x' : 'Hold 2s'}</small>
-            </div>
-          </button>
+      {/* Always-Visible Large Emergency SOS Button on Patient Views (works even if camera/AI fails) */}
+      <button
+        type="button"
+        className="eye-sos-fab"
+        data-eye-sos="true"
+        onClick={() => triggerSosCountdown('Fixed Corner SOS Button')}
+        aria-label="Trigger Emergency SOS Countdown"
+      >
+        <AlertOctagon className="w-7 h-7" />
+        <div className="eye-sos-text">
+          <strong>SOS</strong>
+          <small>{enabled ? (handEnabled ? 'Fist 2s / Blink 2x' : 'Blink 2x / Dwell') : 'Tap Help'}</small>
+        </div>
+      </button>
 
-          {/* SOS Alert Confirmation Banner */}
-          {sosNotice && (
-            <div className="eye-sos-banner" role="alert">
-              <AlertTriangle className="w-6 h-6 shrink-0" />
-              <span>{sosNotice}</span>
-            </div>
-          )}
+      {/* Modals & Overlays */}
+      {enabled && calibrationOpen && (
+        <CalibrationScreen
+          features={eyeFeatures}
+          modelReady={eyeModelReady}
+          onComplete={(model) => {
+            saveCalibration(model);
+            setCalibration(model);
+            setCalibrationOpen(false);
+            if (settings.voiceFeedback) {
+              try {
+                speak('Calibration saved.', 'en-IN');
+              } catch {
+                // ignore
+              }
+            }
+          }}
+          onCancel={() => setCalibrationOpen(false)}
+        />
+      )}
 
-          {/* Modals & Panels */}
-          {calibrationOpen && (
-            <CalibrationScreen
-              features={features}
-              modelReady={modelReady}
-              onComplete={(model) => {
-                saveCalibration(model);
-                setCalibration(model);
-                setCalibrationOpen(false);
-                if (settings.voiceFeedback) {
-                  try {
-                    speak('Eye calibration complete. Blink twice to select buttons.', 'en-IN');
-                  } catch {
-                    // ignore
-                  }
-                }
-              }}
-              onCancel={() => setCalibrationOpen(false)}
-            />
-          )}
-
+      {enabled && (
+        <>
           <EyeControlSettings
             visible={settingsOpen}
             settings={settings}
@@ -659,21 +745,42 @@ export const EyeControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             onFocusInput={(el) => openKeyboard(el)}
           />
 
-          {/* Translucent Gaze Cursor + Snapped Focus Box */}
           <GazeCursor
-            visible={!calibrationOpen && (gazePoint !== null || (settings.scanningEnabled && activeSnappedRect !== null))}
+            visible={
+              !calibrationOpen &&
+              (cursorPoint !== null || (settings.scanningEnabled && activeSnappedRect !== null))
+            }
             x={cursorX}
             y={cursorY}
             sizePx={settings.cursorSizePx}
             dwellProgress={activeDwellProgress}
             blinkStage={blinkStage}
-            doubleBlinkMode={Boolean(settings.blinkEnabled && settings.doubleBlinkEnabled)}
+            doubleBlinkMode={Boolean(eyeEnabled && settings.blinkEnabled && settings.doubleBlinkEnabled)}
             isSnapped={Boolean(activeSnappedEl && activeSnappedRect)}
             snappedRect={activeSnappedRect}
             paused={paused}
             isEmergencyTarget={isEmergencyTarget}
           />
         </>
+      )}
+
+      {/* Part E Full-Screen 5s SOS Countdown */}
+      {sosCountdownOpen && (
+        <SosCountdownOverlay
+          visible
+          mode={mode}
+          triggerSource={sosTriggerSource}
+          contacts={contacts}
+          onClose={() => setSosCountdownOpen(false)}
+        />
+      )}
+
+      {/* Fallback Warning icon reference used when cameraError exists cleanly */}
+      {cameraError && enabled && (
+        <div className="sr-only" role="alert">
+          <AlertTriangle className="w-4 h-4" />
+          <span>{cameraError}</span>
+        </div>
       )}
     </EyeControlContext.Provider>
   );

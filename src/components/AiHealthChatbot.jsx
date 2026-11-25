@@ -26,6 +26,9 @@ const QUICK_SYMPTOM_CHIPS = [
   'Extreme dizziness and lightheadedness'
 ];
 
+/**
+ * @param {{ patientRecord?: Record<string, any> | null, activeSymptoms?: string[], userRole?: 'patient' | 'caregiver', onClose?: (() => void) | null }} props
+ */
 export default function AiHealthChatbot({
   patientRecord = {},
   activeSymptoms = [],
