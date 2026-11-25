@@ -1,9 +1,9 @@
 /**
- * useEyeTracking.ts - Lazy on-device MediaPipe FaceLandmarker iris + head-pose + blink engine
- * - Loads @mediapipe/tasks-vision lazily only when Eye Control Mode is enabled
- * - Runs 100% locally in the browser; never uploads or stores video frames
- * - Throttled ~30fps RAF loop with visibility pause, lighting/distance checks, One Euro Filter,
- *   deliberate/double blink detector, and 2-second eyes-closed pause toggle
+ * useEyeTracking.ts - Lazy on-device MediaPipe FaceLandmarker iris + head-pose + Double-Blink engine
+ * - Hysteresis blink detector (close >= 0.45, open <= 0.25) prevents jitter double-counts
+ * - Freezes gaze cursor when blinking begins so double-blinks click accurately without Bell's-phenomenon jump
+ * - Double-blink selection (2 distinct blinks within configurable window) is primary; natural blinks are ignored
+ * - Holding both eyes shut for 2s toggles tracking Pause/Resume
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -25,11 +25,13 @@ const CDN_WASM_PATH = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10
 const CDN_FACE_MODEL_PATH =
   'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
 
-const TARGET_FRAME_INTERVAL_MS = 33; // ~30fps cap to prevent main UI lag
-const BLINK_THRESHOLD = 0.5;
+const TARGET_FRAME_INTERVAL_MS = 33; // ~30fps cap
+const BLINK_CLOSE_THRESHOLD = 0.45;
+const BLINK_OPEN_THRESHOLD = 0.25;
+const CURSOR_FREEZE_BLINK_THRESHOLD = 0.27;
 const PAUSE_HOLD_MS = 2000;
-const BLINK_COOLDOWN_MS = 900;
-const MIN_BLINK_SAMPLE_MS = 90;
+const BLINK_COOLDOWN_MS = 850;
+const MAX_SINGLE_BLINK_FOR_DOUBLE_MS = 900;
 
 export interface UseEyeTrackingOptions {
   enabled: boolean;
@@ -47,7 +49,8 @@ export interface UseEyeTrackingResult {
   condition: EyeHealthCondition;
   modelReady: boolean;
   cameraActive: boolean;
-  pauseHoldProgress: number; // 0..1 while both eyes are held closed toward 2s pause toggle
+  blinkStage: 0 | 1; // 1 = first blink detected, waiting for 2nd blink to click
+  pauseHoldProgress: number;
   errorMessage: string | null;
   videoRef: React.RefObject<HTMLVideoElement | null>;
 }
@@ -97,7 +100,6 @@ export function useEyeTracking({
     onBlinkActionRef.current = onBlinkAction;
   }, [calibration, settings, paused, onPauseToggle, onBlinkAction]);
 
-  // Update One Euro filter tuning whenever smoothing strength changes
   useEffect(() => {
     euroXRef.current.setParams(settings.smoothingStrength);
     euroYRef.current.setParams(settings.smoothingStrength);
@@ -108,20 +110,21 @@ export function useEyeTracking({
   const [condition, setCondition] = useState<EyeHealthCondition>('loading');
   const [modelReady, setModelReady] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
+  const [blinkStage, setBlinkStage] = useState<0 | 1>(0);
   const [pauseHoldProgress, setPauseHoldProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Refs for frame loop timers & blink state
   const lastFrameTsRef = useRef(0);
   const lastVideoTimeRef = useRef(-1);
   const lastFaceSeenAtRef = useRef(0);
   const lastLumaCheckAtRef = useRef(0);
   const isTooDarkRef = useRef(false);
 
-  // Blink state tracking
+  // Hysteresis blink state
+  const isEyesClosedRef = useRef(false);
   const eyesClosedStartRef = useRef<number | null>(null);
   const pauseTriggeredDuringHoldRef = useRef(false);
-  const lastBlinkEndAtRef = useRef<number>(0);
+  const firstBlinkEndedAtRef = useRef<number>(0);
   const lastBlinkClickAtRef = useRef<number>(0);
 
   const stopResources = useCallback(() => {
@@ -156,16 +159,18 @@ export function useEyeTracking({
 
     euroXRef.current.reset();
     euroYRef.current.reset();
+    isEyesClosedRef.current = false;
     eyesClosedStartRef.current = null;
     pauseTriggeredDuringHoldRef.current = false;
+    firstBlinkEndedAtRef.current = 0;
     setCameraActive(false);
     setModelReady(false);
     setGazePoint(null);
     setFeatures(null);
+    setBlinkStage(0);
     setPauseHoldProgress(0);
   }, []);
 
-  /** Samples luminance from a tiny 16x16 canvas every 500ms */
   const checkAmbientLuminance = useCallback((video: HTMLVideoElement, now: number): boolean => {
     if (now - lastLumaCheckAtRef.current < 500) {
       return isTooDarkRef.current;
@@ -183,12 +188,10 @@ export function useEyeTracking({
       ctx.drawImage(video, 0, 0, 16, 16);
       const data = ctx.getImageData(0, 0, 16, 16).data;
       let sum = 0;
-      const pixels = 256;
       for (let i = 0; i < data.length; i += 4) {
         sum += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
       }
-      const avgLuma = sum / pixels;
-      isTooDarkRef.current = avgLuma < 28;
+      isTooDarkRef.current = sum / 256 < 28;
     } catch {
       isTooDarkRef.current = false;
     }
@@ -207,14 +210,12 @@ export function useEyeTracking({
       setCondition('loading');
       setErrorMessage(null);
 
-      // 1. Check webcam availability
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         setCondition('no_camera');
-        setErrorMessage('Camera API is unavailable in this browser. Using standard input.');
+        setErrorMessage('Camera API is unavailable in this browser. Standard inputs remain active.');
         return;
       }
 
-      // 2. Request local camera stream
       let stream: MediaStream;
       try {
         stream = await navigator.mediaDevices.getUserMedia({
@@ -230,10 +231,10 @@ export function useEyeTracking({
         const name = err instanceof Error ? err.name : '';
         if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
           setCondition('camera_blocked');
-          setErrorMessage('Camera permission was blocked. Enable webcam permission or use standard controls.');
+          setErrorMessage('Camera permission blocked. Enable permission or use normal touch/mouse input.');
         } else {
           setCondition('no_camera');
-          setErrorMessage('No working webcam detected. Continuing with normal touch/mouse input.');
+          setErrorMessage('No webcam found. Continuing cleanly with standard input.');
         }
         return;
       }
@@ -246,7 +247,6 @@ export function useEyeTracking({
       streamRef.current = stream;
       setCameraActive(true);
 
-      // Attach stream to hidden offscreen video element
       let videoEl = videoRef.current;
       if (!videoEl) {
         videoEl = document.createElement('video');
@@ -260,10 +260,9 @@ export function useEyeTracking({
       try {
         await videoEl.play();
       } catch {
-        // Ignore autoplay promise rejection if muted plays inline
+        // ignore muted autoplay warning
       }
 
-      // 3. Lazy-load MediaPipe Tasks Vision + FaceLandmarker ONLY when enabled
       try {
         const vision = await import('@mediapipe/tasks-vision');
         const { FilesetResolver, FaceLandmarker } = vision;
@@ -321,11 +320,10 @@ export function useEyeTracking({
         if (cancelled) return;
         console.error('[useEyeTracking] Model init error:', err);
         setCondition('camera_blocked');
-        setErrorMessage('Could not load Face Landmarker AI model. Please check connectivity once to cache model.');
+        setErrorMessage('Could not load Face Landmarker AI model.');
         return;
       }
 
-      // 4. Start ~30fps detection loop
       const processFrame = () => {
         if (cancelled) return;
         rafRef.current = requestAnimationFrame(processFrame);
@@ -384,67 +382,84 @@ export function useEyeTracking({
         if (!extracted) return;
         setFeatures(extracted);
 
-        // Process bilateral eye closure for 2s Pause/Resume + deliberate blink clicks
-        const bothClosed =
-          extracted.blinkLeft >= BLINK_THRESHOLD && extracted.blinkRight >= BLINK_THRESHOLD;
+        const s = settingsRef.current;
 
-        if (bothClosed) {
-          if (eyesClosedStartRef.current === null) {
-            eyesClosedStartRef.current = now;
-            pauseTriggeredDuringHoldRef.current = false;
-          }
-          const closedElapsed = now - eyesClosedStartRef.current;
-          setPauseHoldProgress(Math.min(1, closedElapsed / PAUSE_HOLD_MS));
+        // Clear Blink 1 indicator once double-blink window expires
+        if (firstBlinkEndedAtRef.current > 0 && now - firstBlinkEndedAtRef.current > s.doubleBlinkWindowMs) {
+          firstBlinkEndedAtRef.current = 0;
+          setBlinkStage(0);
+        }
 
-          if (closedElapsed >= PAUSE_HOLD_MS && !pauseTriggeredDuringHoldRef.current) {
-            pauseTriggeredDuringHoldRef.current = true;
-            setPauseHoldProgress(0);
-            onPauseToggleRef.current();
-          }
-        } else {
-          if (eyesClosedStartRef.current !== null) {
-            const blinkDuration = now - eyesClosedStartRef.current;
+        // Hysteresis bilateral blink detection
+        const avgBlink = (extracted.blinkLeft + extracted.blinkRight) * 0.5;
+        const bothThresholdMet =
+          (extracted.blinkLeft >= BLINK_CLOSE_THRESHOLD && extracted.blinkRight >= BLINK_CLOSE_THRESHOLD) ||
+          avgBlink >= BLINK_CLOSE_THRESHOLD + 0.05;
+        const bothOpened =
+          extracted.blinkLeft <= BLINK_OPEN_THRESHOLD && extracted.blinkRight <= BLINK_OPEN_THRESHOLD;
+
+        if (!isEyesClosedRef.current && bothThresholdMet) {
+          isEyesClosedRef.current = true;
+          eyesClosedStartRef.current = now;
+          pauseTriggeredDuringHoldRef.current = false;
+        } else if (isEyesClosedRef.current) {
+          const closedElapsed = now - (eyesClosedStartRef.current ?? now);
+
+          if (!bothOpened) {
+            // Still closed: monitor 2s Pause/Resume toggle
+            setPauseHoldProgress(Math.min(1, closedElapsed / PAUSE_HOLD_MS));
+            if (closedElapsed >= PAUSE_HOLD_MS && !pauseTriggeredDuringHoldRef.current) {
+              pauseTriggeredDuringHoldRef.current = true;
+              firstBlinkEndedAtRef.current = 0;
+              setBlinkStage(0);
+              setPauseHoldProgress(0);
+              onPauseToggleRef.current();
+            }
+          } else {
+            // Eyes just reopened: complete blink event
+            const blinkDuration = closedElapsed;
+            isEyesClosedRef.current = false;
             eyesClosedStartRef.current = null;
             setPauseHoldProgress(0);
 
-            // Only evaluate selection blinks when NOT paused and NOT just coming out of a 2s pause hold
             if (!pausedRef.current && !pauseTriggeredDuringHoldRef.current) {
-              const s = settingsRef.current;
               const inCooldown = now - lastBlinkClickAtRef.current < BLINK_COOLDOWN_MS;
+              const isValidBlink =
+                blinkDuration >= Math.max(65, s.blinkMinMs) &&
+                blinkDuration < MAX_SINGLE_BLINK_FOR_DOUBLE_MS;
 
-              if (!inCooldown && (s.blinkEnabled || s.scanningEnabled)) {
-                // Deliberate long blink: ignore natural blinks under 300ms; accept configured blinkMinMs (500-800ms)
-                const effectiveLongMs = Math.max(300, s.blinkMinMs);
-                const isDeliberateLongBlink =
-                  blinkDuration >= effectiveLongMs && blinkDuration < PAUSE_HOLD_MS;
-
-                // Double blink: two consecutive distinct blinks (>= 90ms each) completing within window (600ms)
-                const timeSincePrevBlink = now - lastBlinkEndAtRef.current;
-                const isSecondOfDoubleBlink =
-                  s.doubleBlinkEnabled &&
-                  blinkDuration >= MIN_BLINK_SAMPLE_MS &&
-                  blinkDuration < PAUSE_HOLD_MS &&
-                  lastBlinkEndAtRef.current > 0 &&
-                  timeSincePrevBlink <= s.doubleBlinkWindowMs;
-
-                // Single blink selects when scanning mode is active if deliberate (>= 300ms)
-                const isScanSelectBlink =
-                  s.scanningEnabled &&
-                  !s.blinkEnabled &&
-                  blinkDuration >= 300 &&
-                  blinkDuration < PAUSE_HOLD_MS;
-
-                if (isDeliberateLongBlink || isSecondOfDoubleBlink || isScanSelectBlink) {
+              if (!inCooldown && isValidBlink && (s.blinkEnabled || s.scanningEnabled)) {
+                if (s.scanningEnabled && !s.doubleBlinkEnabled) {
+                  // Scanning fallback can click on single deliberate blink if doubleBlink is disabled
                   lastBlinkClickAtRef.current = now;
-                  lastBlinkEndAtRef.current = 0;
+                  firstBlinkEndedAtRef.current = 0;
+                  setBlinkStage(0);
                   onBlinkActionRef.current();
-                } else if (blinkDuration >= MIN_BLINK_SAMPLE_MS && blinkDuration < 500) {
-                  lastBlinkEndAtRef.current = now;
+                } else if (s.doubleBlinkEnabled) {
+                  // Double-Blink Selection: requires 2 distinct blinks within doubleBlinkWindowMs
+                  if (
+                    firstBlinkEndedAtRef.current > 0 &&
+                    now - firstBlinkEndedAtRef.current <= s.doubleBlinkWindowMs
+                  ) {
+                    lastBlinkClickAtRef.current = now;
+                    firstBlinkEndedAtRef.current = 0;
+                    setBlinkStage(0);
+                    onBlinkActionRef.current();
+                  } else {
+                    firstBlinkEndedAtRef.current = now;
+                    setBlinkStage(1);
+                  }
+                } else if (blinkDuration >= 500) {
+                  // Explicit single long-blink fallback if user unchecked double-blink in Settings
+                  lastBlinkClickAtRef.current = now;
+                  firstBlinkEndedAtRef.current = 0;
+                  setBlinkStage(0);
+                  onBlinkActionRef.current();
                 }
               }
             }
+            pauseTriggeredDuringHoldRef.current = false;
           }
-          pauseTriggeredDuringHoldRef.current = false;
         }
 
         if (pausedRef.current) {
@@ -452,7 +467,6 @@ export function useEyeTracking({
           return;
         }
 
-        // Check environmental / distance conditions
         if (dark) {
           setCondition('too_dark');
         } else if (extracted.faceScale < 0.085) {
@@ -461,8 +475,14 @@ export function useEyeTracking({
           setCondition('ok');
         }
 
-        // Don't jump cursor coordinates while eyes are shut mid-blink
-        if (!bothClosed) {
+        // Lock cursor position while blinking OR waiting for 2nd blink so target doesn't slip!
+        const freezeCursor =
+          isEyesClosedRef.current ||
+          extracted.blinkLeft > CURSOR_FREEZE_BLINK_THRESHOLD ||
+          extracted.blinkRight > CURSOR_FREEZE_BLINK_THRESHOLD ||
+          (firstBlinkEndedAtRef.current > 0 && now - firstBlinkEndedAtRef.current <= 320);
+
+        if (!freezeCursor) {
           const norm = predictGazeNormalized(extracted, calibrationRef.current);
           const vw = window.innerWidth || 1280;
           const vh = window.innerHeight || 720;
@@ -504,6 +524,7 @@ export function useEyeTracking({
     condition: !isTracking ? 'paused' : paused && condition === 'ok' ? 'paused' : condition,
     modelReady: isTracking ? modelReady : false,
     cameraActive: isTracking ? cameraActive : false,
+    blinkStage: isTracking ? blinkStage : 0,
     pauseHoldProgress: isTracking ? pauseHoldProgress : 0,
     errorMessage: isTracking ? errorMessage : null,
     videoRef,

@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import symptomsData from '../data/symptoms.json';
 import languages from '../data/languages.json';
 import { speak } from '../lib/speech.js';
@@ -26,8 +27,35 @@ import WarningBox from '../components/WarningBox.jsx';
 import WebcamGesture from '../components/WebcamGesture.jsx';
 import Icon from '../components/Icons.jsx';
 import AiHealthChatbot from '../components/AiHealthChatbot.jsx';
+import { EyeControlProvider } from '../components/accessibility/EyeControlProvider.tsx';
+import { useEyeControl } from '../components/accessibility/eyeControlContext.ts';
+
+function PatientEyeModeToggle() {
+  const { enabled, requestEnable, disable } = useEyeControl();
+  return (
+    <button
+      type="button"
+      onClick={() => (enabled ? disable() : requestEnable())}
+      className={`btn-eye-toggle ${enabled ? 'is-active' : ''}`}
+      aria-pressed={enabled}
+      aria-label={enabled ? 'Turn off Patient Eye Control Mode' : 'Turn on Patient Eye Control Mode (look & blink twice to select)'}
+      title="Hands-free Eye-Gesture Control (Blink twice to select)"
+    >
+      {enabled ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+      <span>{enabled ? 'Eye Control ON' : 'Eye Control'}</span>
+    </button>
+  );
+}
 
 export default function Patient() {
+  return (
+    <EyeControlProvider>
+      <PatientWorkspace />
+    </EyeControlProvider>
+  );
+}
+
+function PatientWorkspace() {
   const [langCode, setLangCode] = useState('hi');
   const [patientRecord, setPatientRecord] = useState(null);
   const [activeSymptoms, setActiveSymptoms] = useState([]);
@@ -312,6 +340,8 @@ export default function Patient() {
             <span>🤖</span>
             <span>{showChatbot ? 'Hide AI Chatbot' : 'AI Health Assistant'}</span>
           </button>
+
+          <PatientEyeModeToggle />
 
           <button type="button" className="sos" onClick={handleEmergencyClick}>
             <Icon name="siren" />

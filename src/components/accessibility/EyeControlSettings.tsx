@@ -1,6 +1,6 @@
 /**
  * EyeControlSettings.tsx - Gaze-accessible Settings Modal
- * Uses large stepper buttons & high-contrast toggles (64x64px minimum) persisted to localStorage.
+ * Defaults to Double-Blink Selection (blink twice to select), with optional Dwell & Scanning modes.
  */
 
 import React from 'react';
@@ -18,7 +18,7 @@ export interface EyeControlSettingsProps {
 
 const CURSOR_SIZES = [
   { label: 'Compact', value: 28 },
-  { label: 'Standard', value: 44 },
+  { label: 'Standard', value: 46 },
   { label: 'Large', value: 58 },
   { label: 'Max', value: 72 },
 ];
@@ -74,22 +74,22 @@ export const EyeControlSettings: React.FC<EyeControlSettingsProps> = ({
             <div className="eye-toggle-row">
               <button
                 type="button"
+                className={`eye-toggle-btn ${settings.doubleBlinkEnabled ? 'is-on' : ''}`}
+                onClick={() => update({ doubleBlinkEnabled: !settings.doubleBlinkEnabled, blinkEnabled: true })}
+                aria-pressed={settings.doubleBlinkEnabled}
+              >
+                <span>Double-Blink Click (Blink Twice)</span>
+                <strong>{settings.doubleBlinkEnabled ? 'ON' : 'OFF'}</strong>
+              </button>
+
+              <button
+                type="button"
                 className={`eye-toggle-btn ${settings.dwellEnabled ? 'is-on' : ''}`}
                 onClick={() => update({ dwellEnabled: !settings.dwellEnabled })}
                 aria-pressed={settings.dwellEnabled}
               >
                 <span>Dwell Click (Hold Gaze)</span>
                 <strong>{settings.dwellEnabled ? 'ON' : 'OFF'}</strong>
-              </button>
-
-              <button
-                type="button"
-                className={`eye-toggle-btn ${settings.blinkEnabled ? 'is-on' : ''}`}
-                onClick={() => update({ blinkEnabled: !settings.blinkEnabled })}
-                aria-pressed={settings.blinkEnabled}
-              >
-                <span>Blink Click (Long / Double Blink)</span>
-                <strong>{settings.blinkEnabled ? 'ON' : 'OFF'}</strong>
               </button>
 
               <button
@@ -104,9 +104,35 @@ export const EyeControlSettings: React.FC<EyeControlSettingsProps> = ({
             </div>
           </div>
 
+          {/* Double-Blink Window Stepper */}
+          <div className="eye-setting-group">
+            <h3>Double-Blink Window: {settings.doubleBlinkWindowMs}ms</h3>
+            <div className="eye-stepper-row">
+              <button
+                type="button"
+                className="eye-stepper-btn"
+                onClick={() => update({ doubleBlinkWindowMs: Math.max(500, settings.doubleBlinkWindowMs - 100) })}
+                aria-label="Decrease double blink window"
+              >
+                <Minus className="w-5 h-5" />
+                <span>Faster</span>
+              </button>
+              <span className="eye-stepper-val">{settings.doubleBlinkWindowMs} ms</span>
+              <button
+                type="button"
+                className="eye-stepper-btn"
+                onClick={() => update({ doubleBlinkWindowMs: Math.min(1500, settings.doubleBlinkWindowMs + 100) })}
+                aria-label="Increase double blink window"
+              >
+                <Plus className="w-5 h-5" />
+                <span>More Time</span>
+              </button>
+            </div>
+          </div>
+
           {/* Dwell Time Stepper */}
           <div className="eye-setting-group">
-            <h3>Dwell Time: {(settings.dwellTimeMs / 1000).toFixed(1)}s</h3>
+            <h3>Dwell Time (when enabled): {(settings.dwellTimeMs / 1000).toFixed(1)}s</h3>
             <div className="eye-stepper-row">
               <button
                 type="button"
@@ -126,32 +152,6 @@ export const EyeControlSettings: React.FC<EyeControlSettingsProps> = ({
               >
                 <Plus className="w-5 h-5" />
                 <span>Longer</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Blink Duration Stepper */}
-          <div className="eye-setting-group">
-            <h3>Deliberate Blink Threshold: {settings.blinkMinMs}ms</h3>
-            <div className="eye-stepper-row">
-              <button
-                type="button"
-                className="eye-stepper-btn"
-                onClick={() => update({ blinkMinMs: Math.max(500, settings.blinkMinMs - 50) })}
-                aria-label="Decrease blink threshold"
-              >
-                <Minus className="w-5 h-5" />
-                <span>50ms</span>
-              </button>
-              <span className="eye-stepper-val">{settings.blinkMinMs} ms</span>
-              <button
-                type="button"
-                className="eye-stepper-btn"
-                onClick={() => update({ blinkMinMs: Math.min(800, settings.blinkMinMs + 50) })}
-                aria-label="Increase blink threshold"
-              >
-                <Plus className="w-5 h-5" />
-                <span>+50ms</span>
               </button>
             </div>
           </div>

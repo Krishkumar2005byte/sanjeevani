@@ -5,19 +5,16 @@
 
 import React, { useState, useEffect } from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff } from 'lucide-react';
 import languages from '../data/languages.json';
 import { getPatient, setPatientLanguage, resetPatient } from '../lib/patientService';
 import { subscribeToAuth, logout } from '../lib/authService';
 import { getUiText } from '../lib/translations';
-import { useEyeControl } from './accessibility/eyeControlContext';
 import Icon from './Icons';
 
 const FEATURED_CODES = ['hi', 'en', 'sd', 'pa', 'mr', 'mai'];
 
 export default function Navbar() {
   const navigate = useNavigate();
-  const { enabled: eyeModeEnabled, requestEnable: enableEyeMode, disable: disableEyeMode } = useEyeControl();
   const [resetting, setResetting] = useState(false);
   const [currentLangCode, setCurrentLangCode] = useState(() => localStorage.getItem('sanjeevani_lang_code') || 'hi');
   const [currentUser, setCurrentUser] = useState(null);
@@ -165,18 +162,6 @@ export default function Navbar() {
             ))}
           </optgroup>
         </select>
-
-        <button
-          type="button"
-          onClick={() => (eyeModeEnabled ? disableEyeMode() : enableEyeMode())}
-          className={`btn-eye-toggle ${eyeModeEnabled ? 'is-active' : ''}`}
-          aria-pressed={eyeModeEnabled}
-          aria-label={eyeModeEnabled ? 'Turn off Eye Control Mode' : 'Turn on Eye Control Mode (hands-free webcam navigation)'}
-          title="Hands-free Eye-Gesture Accessibility Mode"
-        >
-          {eyeModeEnabled ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-          <span>{eyeModeEnabled ? 'Eye Mode ON' : 'Eye Control'}</span>
-        </button>
 
         <button
           type="button"

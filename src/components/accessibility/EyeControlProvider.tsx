@@ -192,16 +192,24 @@ export const EyeControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }, [activateTarget]);
 
-  const { gazePoint, features, condition, cameraActive, pauseHoldProgress, errorMessage } =
-    useEyeTracking({
-      enabled,
-      consentGranted,
-      paused,
-      calibration,
-      settings,
-      onPauseToggle: handlePauseToggle,
-      onBlinkAction: handleBlinkAction,
-    });
+  const {
+    gazePoint,
+    features,
+    condition,
+    modelReady,
+    cameraActive,
+    blinkStage,
+    pauseHoldProgress,
+    errorMessage,
+  } = useEyeTracking({
+    enabled,
+    consentGranted,
+    paused,
+    calibration,
+    settings,
+    onPauseToggle: handlePauseToggle,
+    onBlinkAction: handleBlinkAction,
+  });
 
   // Update magnetic snapping, dwell timer, and auto edge-scroll whenever gaze updates
   useEffect(() => {
@@ -451,9 +459,9 @@ export const EyeControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             </p>
             <ul className="eye-consent-list">
               <li>Video frames never leave your browser and are never recorded or uploaded.</li>
-              <li>Interactive buttons enlarge to 64×64px minimum with dwell, blink, or scan selection.</li>
+              <li>Interactive buttons enlarge to 64×64px minimum with magnetic target snapping.</li>
+              <li><strong>Look at any button and blink twice</strong> to select it cleanly (natural single blinks are ignored).</li>
               <li>Close both eyes for 2 seconds anytime to pause or resume tracking.</li>
-              <li>Normal mouse, touch, and keyboard navigation remain fully usable.</li>
             </ul>
             <div className="eye-modal-footer">
               <button
@@ -491,6 +499,9 @@ export const EyeControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 {cameraActive ? 'Camera On-Device: ' : ''}
                 {statusText}
               </span>
+              {blinkStage === 1 && (
+                <span className="eye-blink-pill">Blink 1/2 — Blink once more to click!</span>
+              )}
               {pauseHoldProgress > 0.05 && (
                 <span className="eye-pause-progress">
                   Holding eyes closed ({Math.round(pauseHoldProgress * 100)}%)
@@ -584,18 +595,18 @@ export const EyeControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             </button>
           </div>
 
-          {/* Always-Visible Large Emergency SOS Button (2s Dwell) */}
+          {/* Always-Visible Large Emergency SOS Button */}
           <button
             type="button"
             className="eye-sos-fab"
             data-eye-sos="true"
             onClick={() => void handleSOS()}
-            aria-label="Emergency SOS Help (Hold gaze for 2 seconds)"
+            aria-label="Emergency SOS Help (Look and blink twice, or hold gaze for 2 seconds if Dwell enabled)"
           >
             <AlertOctagon className="w-7 h-7" />
             <div className="eye-sos-text">
               <strong>SOS</strong>
-              <small>Hold 2s</small>
+              <small>{settings.doubleBlinkEnabled ? 'Blink 2x' : 'Hold 2s'}</small>
             </div>
           </button>
 
@@ -611,13 +622,14 @@ export const EyeControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           {calibrationOpen && (
             <CalibrationScreen
               features={features}
+              modelReady={modelReady}
               onComplete={(model) => {
                 saveCalibration(model);
                 setCalibration(model);
                 setCalibrationOpen(false);
                 if (settings.voiceFeedback) {
                   try {
-                    speak('Eye calibration complete.', 'en-IN');
+                    speak('Eye calibration complete. Blink twice to select buttons.', 'en-IN');
                   } catch {
                     // ignore
                   }
@@ -654,6 +666,8 @@ export const EyeControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             y={cursorY}
             sizePx={settings.cursorSizePx}
             dwellProgress={activeDwellProgress}
+            blinkStage={blinkStage}
+            doubleBlinkMode={Boolean(settings.blinkEnabled && settings.doubleBlinkEnabled)}
             isSnapped={Boolean(activeSnappedEl && activeSnappedRect)}
             snappedRect={activeSnappedRect}
             paused={paused}

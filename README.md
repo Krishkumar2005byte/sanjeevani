@@ -166,28 +166,25 @@ git push origin dev1-buttons
 
 ---
 
-## Eye-Gesture Accessibility Mode (Hands-Free Navigation)
+## Eye-Gesture Accessibility Mode (Patient Panel Only · Hands-Free Navigation)
 
-Sanjeevani includes an optional **Eye Control Mode** built for paralyzed and motor-impaired users, powered lazily by `@mediapipe/tasks-vision` (`FaceLandmarker` with 478 iris/face landmarks and blendshapes). It runs **100% on-device** in the browser and is **OFF by default**.
+Sanjeevani includes an optional **Eye Control Mode** scoped specifically to the **Patient Panel (`/patient`)** for paralyzed and motor-impaired users. Powered lazily by `@mediapipe/tasks-vision` (`FaceLandmarker` with iris landmarks and blendshapes), it runs **100% on-device** in the browser and is **OFF by default**.
 
 ### Setup & Consent
-1. Click the **Eye Control** toggle button in the top navigation bar on any page.
+1. Navigate to the **Patient Panel (`/patient`)** and click **Eye Control** in the patient action strip.
 2. Review and accept the **On-Device Camera Consent** dialog (no video frames are ever stored or uploaded).
-3. The local MediaPipe Face Landmarker model (`public/mediapipe/face_landmarker.task` + WASM) loads lazily on demand without slowing initial page load.
+3. The local MediaPipe Face Landmarker model (`public/mediapipe/face_landmarker.task` + WASM) loads lazily on demand. Leaving the Patient Panel immediately stops the camera stream.
 
 ### 9-Point Calibration
-- When first enabled (or anytime via **Recalibrate** in the top Eye Bar / Settings), look naturally at each of the **9 screen target dots** (`Top Left` to `Bottom Right`) as the circular progress ring fills.
-- Calibration fits a regularized ridge regression model combining normalized iris position and subtle head pose (yaw/pitch) and persists it in `localStorage`.
+- When first enabled (or anytime via **Recalibrate** in the top Eye Bar / Settings), look naturally at each of the **9 screen target dots** (`Top Left` to `Bottom Right`) once the AI Face Landmarker is ready.
+- Calibration fits a 5-parameter affine ridge regression model combining rigid-canthus normalized iris offsets and head pose (yaw/pitch), verifies fit error quality, and persists in `localStorage`.
 
 ### Supported Eye Gestures & Selection Modes
-- **Dwell Click (Default):** Hold gaze over any interactive element (buttons snap magnetically within `~80px`) until the circular dwell ring completes (`1.2s` default, adjustable `0.6s–3.0s`).
-- **Blink Click (Optional):** Deliberately hold a blink for `500–800ms` (configurable), or perform a **double blink** within `600ms`. Natural involuntary blinks (`< 300ms`) are ignored, with cooldown protection against double triggers.
-- **Scanning Mode (Fallback):** Cycles through focusable targets one by one at an adjustable interval (`1.0s–3.5s`); a single deliberate blink selects the focused item.
-- **Pause / Resume (2s Eyes Closed):** Shut both eyes continuously for **2 seconds** to pause tracking (and again for 2s to resume). No clicks can fire while paused.
-- **Scrolling:** Use the pinned large **Scroll Up / Scroll Down** gaze buttons or look briefly into the top/bottom screen edge.
-- **Gaze Keyboard & Quick Phrases:** Dwelling on any text input automatically opens a large dwell keyboard + spoken quick phrases (`Call nurse`, `I need water`, `I'm in pain`, `Emergency`) via Web Speech API.
-- **Emergency SOS (2s Dwell):** An always-visible large **SOS** corner button requires a continuous `2s` dwell to trigger Sanjeevani's emergency alarm flow.
-- **Talk to Agent:** Opens the high-contrast voice/text AI Diagnosis panel and reads responses aloud cleanly.
+- **Double-Blink Click (Default):** Look at any control (cursor freezes briefly during blinks and snaps magnetically within `~80px`), then **blink twice cleanly** within `900ms` to click it. Natural single blinks are ignored, preventing accidental selections.
+- **Dwell Click (Optional):** Can be enabled in Settings to click after holding gaze continuously (`0.6s–3.0s`).
+- **Scanning Mode (Fallback):** Cycles through focusable targets one by one at an adjustable interval (`1.0s–3.5s`).
+- **Pause / Resume (2s Eyes Closed):** Shut both eyes continuously for **2 seconds** to pause tracking (and again for 2s to resume). No clicks fire while paused.
+- **Scrolling, Keyboard, SOS & Agent:** Includes edge auto-scroll, Scroll Up/Down buttons, automatic Dwell/Double-Blink Keyboard + spoken quick phrases, **Talk to Agent**, and a fixed **SOS** Emergency trigger.
 
 ### Known Limitations
 - **Ambient Lighting:** Dim or strongly backlit rooms degrade iris tracking (`Too dark` warning appears; turn on soft front lighting).

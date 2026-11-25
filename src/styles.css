@@ -3789,3 +3789,73 @@ html[data-eye-mode='true'] .sj-header-right {
     animation: none !important;
   }
 }
+
+/* Double-Blink Primed Cursor, Target Hint & Calibration Review */
+.eye-gaze-cursor.is-blink-1 {
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.35) 0%, rgba(37, 99, 235, 0.12) 70%);
+  border-color: #2563EB;
+}
+
+.eye-snap-highlight.is-blink-primed {
+  border-color: #2563EB;
+  box-shadow: 0 0 0 5px rgba(147, 197, 253, 0.9), 0 8px 24px rgba(37, 99, 235, 0.3);
+}
+
+.eye-snap-hint {
+  position: absolute;
+  top: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0E3D27;
+  color: #FFFFFF;
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.eye-snap-highlight.is-blink-primed .eye-snap-hint {
+  background: #2563EB;
+}
+
+.eye-blink-pill {
+  background: #2563EB;
+  color: #FFFFFF;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.eye-calibration-review-card {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(560px, 92vw);
+  background: #161B18;
+  border: 3px solid #22C55E;
+  border-radius: 20px;
+  padding: clamp(18px, 3vw, 28px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 14px;
+  z-index: 9550;
+  color: #FFFFFF;
+}
+
+.eye-calibration-review-card h3 {
+  margin: 0;
+  font-size: clamp(1.2rem, 2vw, 1.55rem);
+}
+
+.eye-calibration-review-card p {
+  margin: 0;
+  font-size: clamp(0.95rem, 1.4vw, 1.15rem);
+  color: #CBD5E1;
+  line-height: 1.55;
+}

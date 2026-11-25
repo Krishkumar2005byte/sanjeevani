@@ -1,11 +1,11 @@
 /**
- * eyeCalibration.ts - Feature extraction, 9-point Ridge Regression mapper, and One Euro Filter
+ * eyeCalibration.ts - Rigid-Canthus Iris Feature Extraction, 9-Point Affine Ridge Regression & One Euro Filter
  */
 
 import type { CalibrationModel, CalibrationSample, EyeFeatures, EyeSettings } from '../types/eyeControl';
 
-export const EYE_CALIBRATION_STORAGE_KEY = 'sanjeevani_eye_calibration_v1';
-export const EYE_SETTINGS_STORAGE_KEY = 'sanjeevani_eye_settings_v1';
+export const EYE_CALIBRATION_STORAGE_KEY = 'sanjeevani_eye_calibration_v2';
+export const EYE_SETTINGS_STORAGE_KEY = 'sanjeevani_eye_settings_v2';
 
 /** 9-point screen grid coordinates in normalized [0..1] viewport space */
 export const CALIBRATION_TARGETS: ReadonlyArray<{ id: string; x: number; y: number; label: string }> = [
@@ -15,9 +15,9 @@ export const CALIBRATION_TARGETS: ReadonlyArray<{ id: string; x: number; y: numb
   { id: 'ml', x: 0.12, y: 0.50, label: 'Middle Left' },
   { id: 'mc', x: 0.50, y: 0.50, label: 'Center' },
   { id: 'mr', x: 0.88, y: 0.50, label: 'Middle Right' },
-  { id: 'bl', x: 0.12, y: 0.86, label: 'Bottom Left' },
-  { id: 'bc', x: 0.50, y: 0.86, label: 'Bottom Center' },
-  { id: 'br', x: 0.88, y: 0.86, label: 'Bottom Right' },
+  { id: 'bl', x: 0.12, y: 0.84, label: 'Bottom Left' },
+  { id: 'bc', x: 0.50, y: 0.84, label: 'Bottom Center' },
+  { id: 'br', x: 0.88, y: 0.84, label: 'Bottom Right' },
 ];
 
 export interface NormalizedLandmark {
@@ -27,7 +27,8 @@ export interface NormalizedLandmark {
 }
 
 /**
- * Extracts normalized iris ratios + head pose proxies from MediaPipe FaceLandmarker 478 landmarks & blendshapes.
+ * Extracts normalized iris offsets anchored to rigid eye corner landmarks + head pose proxies.
+ * Anchoring Y to fixed canthi (outer/inner corners) instead of upper eyelids prevents eyelid closure from compressing Y!
  */
 export function extractEyeFeatures(
   landmarks: NormalizedLandmark[],
@@ -37,46 +38,39 @@ export function extractEyeFeatures(
     return null;
   }
 
-  // Iris centers (indices 468 = left iris center, 473 = right iris center in MediaPipe 478 topology)
   const leftIris = landmarks[468];
   const rightIris = landmarks[473];
 
-  // Eye corners & eyelid bounds
+  // Fixed orbital corner bone landmarks (barely deform during vertical eye movement)
   const lOuter = landmarks[33];
   const lInner = landmarks[133];
-  const lTop = landmarks[159];
-  const lBot = landmarks[145];
-
   const rInner = landmarks[362];
   const rOuter = landmarks[263];
-  const rTop = landmarks[386];
-  const rBot = landmarks[374];
 
-  if (!leftIris || !rightIris || !lOuter || !lInner || !lTop || !lBot || !rInner || !rOuter || !rTop || !rBot) {
+  if (!leftIris || !rightIris || !lOuter || !lInner || !rInner || !rOuter) {
     return null;
   }
 
-  // Horizontal ratio within eye socket (note webcam video is mirrored so invert X for screen-natural movement)
-  const lWidth = Math.max(Math.abs(lInner.x - lOuter.x), 0.005);
-  const rWidth = Math.max(Math.abs(rOuter.x - rInner.x), 0.005);
+  const lWidth = Math.max(Math.hypot(lInner.x - lOuter.x, lInner.y - lOuter.y), 0.008);
+  const rWidth = Math.max(Math.hypot(rOuter.x - rInner.x, rOuter.y - rInner.y), 0.008);
 
-  const lMinX = Math.min(lOuter.x, lInner.x);
-  const rMinX = Math.min(rInner.x, rOuter.x);
+  const lCenterX = (lOuter.x + lInner.x) * 0.5;
+  const lCenterY = (lOuter.y + lInner.y) * 0.5;
+  const rCenterX = (rInner.x + rOuter.x) * 0.5;
+  const rCenterY = (rInner.y + rOuter.y) * 0.5;
 
-  const lRatioX = 1 - (leftIris.x - lMinX) / lWidth;
-  const rRatioX = 1 - (rightIris.x - rMinX) / rWidth;
+  // Horizontal iris shift mirrored for natural screen direction: right gaze moves iris image-left (smaller x)
+  const lOffsetX = (lCenterX - leftIris.x) / lWidth;
+  const rOffsetX = (rCenterX - rightIris.x) / rWidth;
 
-  // Vertical ratio within eye aperture
-  const lHeight = Math.max(Math.abs(lBot.y - lTop.y), 0.004);
-  const rHeight = Math.max(Math.abs(rBot.y - rTop.y), 0.004);
+  // Vertical iris shift anchored to rigid corner baseline normalized by eye width
+  const lOffsetY = (leftIris.y - lCenterY) / lWidth;
+  const rOffsetY = (rightIris.y - rCenterY) / rWidth;
 
-  const lRatioY = (leftIris.y - Math.min(lTop.y, lBot.y)) / lHeight;
-  const rRatioY = (rightIris.y - Math.min(rTop.y, rBot.y)) / rHeight;
+  const gazeX = clamp((lOffsetX + rOffsetX) * 0.5, -0.6, 0.6);
+  const gazeY = clamp((lOffsetY + rOffsetY) * 0.5, -0.5, 0.5);
 
-  const gazeX = clamp((lRatioX + rRatioX) * 0.5, -0.3, 1.3);
-  const gazeY = clamp((lRatioY + rRatioY) * 0.5, -0.3, 1.3);
-
-  // Head pose proxies using stable facial symmetry landmarks
+  // Head pose proxies using stable nose bridge + facial boundary landmarks
   const noseTip = landmarks[1];
   const leftCheek = landmarks[234];
   const rightCheek = landmarks[454];
@@ -88,14 +82,12 @@ export function extractEyeFeatures(
   const midFaceX = ((leftCheek?.x ?? 0.4) + (rightCheek?.x ?? 0.6)) * 0.5;
   const midFaceY = ((forehead?.y ?? 0.3) + (chin?.y ?? 0.7)) * 0.5;
 
-  // Negated yaw so turning nose right moves mirrored cursor right
   const headYaw = clamp(-((noseTip?.x ?? midFaceX) - midFaceX) / faceWidth, -0.8, 0.8);
   const headPitch = clamp(((noseTip?.y ?? midFaceY) - midFaceY) / faceHeight, -0.8, 0.8);
 
   const blinkLeft = blendshapeMap.get('eyeBlinkLeft') ?? 0;
   const blinkRight = blendshapeMap.get('eyeBlinkRight') ?? 0;
 
-  // Inter-ocular distance relative to frame width
   const faceScale = Math.hypot(rOuter.x - lOuter.x, rOuter.y - lOuter.y);
 
   return {
@@ -109,30 +101,18 @@ export function extractEyeFeatures(
   };
 }
 
-/** Builds feature vector phi(x) for ridge regression */
+/**
+ * 5-parameter Affine + Head Pose basis vector:
+ * Stably generalized across 9 calibration targets (4 degrees of freedom left to reject jitter)
+ */
 export function buildFeatureVector(f: EyeFeatures): number[] {
-  const gx = f.gazeX - 0.5;
-  const gy = f.gazeY - 0.5;
-  return [
-    1,
-    gx,
-    gy,
-    f.headYaw,
-    f.headPitch,
-    gx * gx,
-    gy * gy,
-    gx * gy,
-  ];
+  return [1, f.gazeX, f.gazeY, f.headYaw, f.headPitch];
 }
 
-/**
- * Fits ridge-regularized linear least squares (X^T X + lambda I) w = X^T y
- */
 function solveRidgeRegression(X: number[][], y: number[]): number[] {
   const n = X.length;
   const d = X[0].length;
 
-  // Construct normal equations matrix A = X^T X + lambda * I
   const A: number[][] = Array.from({ length: d }, () => Array(d).fill(0));
   const b: number[] = Array(d).fill(0);
 
@@ -147,9 +127,9 @@ function solveRidgeRegression(X: number[][], y: number[]): number[] {
     }
   }
 
-  // Subtle ridge penalty calibrated for small-scale normalized eye coordinates (0..0.3 variance)
+  // Light ridge regularization calibrated for small eye feature variances (0..0.15)
   for (let i = 1; i < d; i += 1) {
-    A[i][i] += i <= 4 ? 0.0004 : 0.0015;
+    A[i][i] += 0.0004;
   }
   A[0][0] += 1e-6;
 
@@ -161,7 +141,6 @@ function gaussianElimination(matrix: number[][], rhs: number[]): number[] {
   const M = matrix.map((row, idx) => [...row, rhs[idx]]);
 
   for (let col = 0; col < n; col += 1) {
-    // Partial pivot
     let maxRow = col;
     for (let row = col + 1; row < n; row += 1) {
       if (Math.abs(M[row][col]) > Math.abs(M[maxRow][col])) {
@@ -195,7 +174,7 @@ function gaussianElimination(matrix: number[][], rhs: number[]): number[] {
 }
 
 /**
- * Fits 9-point calibration samples into a predictive model.
+ * Fits 9-point calibration samples into a predictive model with accuracy score.
  */
 export function fitCalibrationModel(samples: CalibrationSample[]): CalibrationModel {
   const X = samples.map((s) => buildFeatureVector(s.features));
@@ -212,32 +191,36 @@ export function fitCalibrationModel(samples: CalibrationSample[]): CalibrationMo
     totalErr += Math.hypot(px - yX[i], py - yY[i]);
   }
 
+  const errorNorm = samples.length > 0 ? totalErr / samples.length : 1;
+  const quality: CalibrationModel['quality'] =
+    errorNorm < 0.09 ? 'good' : errorNorm < 0.16 ? 'fair' : 'poor';
+
   return {
     weightsX,
     weightsY,
-    errorNorm: samples.length > 0 ? totalErr / samples.length : 0,
+    errorNorm,
+    quality,
     calibratedAt: new Date().toISOString(),
   };
 }
 
 /**
  * Predicts normalized [0..1] screen coordinates from extracted features.
- * Falls back to an intuitive iris + head-pose projection when uncalibrated.
  */
 export function predictGazeNormalized(
   features: EyeFeatures,
   model: CalibrationModel | null
 ): { x: number; y: number } {
-  if (model && model.weightsX.length === 8 && model.weightsY.length === 8) {
+  if (model && model.weightsX.length === 5 && model.weightsY.length === 5) {
     const vec = buildFeatureVector(features);
     const x = clamp(dot(model.weightsX, vec), 0.01, 0.99);
     const y = clamp(dot(model.weightsY, vec), 0.01, 0.99);
     return { x, y };
   }
 
-  // Uncalibrated sensible linear fallback (combines eye deviation + slight head pose)
-  const rawX = 0.5 + (features.gazeX - 0.5) * 3.0 + features.headYaw * 1.4;
-  const rawY = 0.5 + (features.gazeY - 0.48) * 3.2 + features.headPitch * 1.6;
+  // Fallback uncalibrated projection centered around (0, 0) canthus offset
+  const rawX = 0.5 + features.gazeX * 3.8 + features.headYaw * 1.6;
+  const rawY = 0.5 + features.gazeY * 4.2 + features.headPitch * 1.8;
   return {
     x: clamp(rawX, 0.02, 0.98),
     y: clamp(rawY, 0.02, 0.98),
@@ -256,9 +239,6 @@ export function clamp(val: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, val));
 }
 
-/**
- * One Euro Filter (Casiez et al., CHI 2012) for smooth, responsive gaze signal denoising.
- */
 class LowPassFilter {
   private y: number | null = null;
   private s: number | null = null;
@@ -292,15 +272,9 @@ export class OneEuroFilter {
   private xFilter = new LowPassFilter();
   private dxFilter = new LowPassFilter();
   private lastTimeMs: number | null = null;
-  private minCutoff: number;
-  private beta: number;
-  private dCutoff: number;
-
-  constructor(minCutoff = 1.0, beta = 0.007, dCutoff = 1.0) {
-    this.minCutoff = minCutoff;
-    this.beta = beta;
-    this.dCutoff = dCutoff;
-  }
+  private minCutoff = 1.0;
+  private beta = 0.015;
+  private dCutoff = 1.0;
 
   public setParams(strength: EyeSettings['smoothingStrength']): void {
     switch (strength) {
@@ -358,7 +332,7 @@ export function loadSavedCalibration(): CalibrationModel | null {
     const raw = localStorage.getItem(EYE_CALIBRATION_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as CalibrationModel;
-    if (Array.isArray(parsed?.weightsX) && Array.isArray(parsed?.weightsY)) {
+    if (Array.isArray(parsed?.weightsX) && parsed.weightsX.length === 5 && Array.isArray(parsed?.weightsY)) {
       return parsed;
     }
     return null;
@@ -371,7 +345,7 @@ export function saveCalibration(model: CalibrationModel): void {
   try {
     localStorage.setItem(EYE_CALIBRATION_STORAGE_KEY, JSON.stringify(model));
   } catch {
-    // ignore storage quota errors
+    // ignore quota errors
   }
 }
 
